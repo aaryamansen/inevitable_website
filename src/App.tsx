@@ -1,10 +1,11 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
+import { animate, scrambleText } from 'animejs'
 
 const navItems = [
-  { label: 'INEVITABLE', href: '#inevitable' },
-  { label: 'FELLOWSHIP', href: '#fellowship' },
-  { label: 'RESEARCH', href: '#research' },
-  { label: 'TEAM', href: '#team' },
+  { label: 'INEVITABLE', href: '#inevitable', icon: 'all_inclusive' },
+  { label: 'FELLOWSHIP', href: '#fellowship', icon: 'diversity_3' },
+  { label: 'RESEARCH', href: '#research', icon: 'science' },
+  { label: 'TEAM', href: '#team', icon: 'groups' },
 ]
 
 const researchCards = [
@@ -28,12 +29,78 @@ const faqs = [
   'What does funding look like at the end?',
 ]
 
+// Scrambles its text in once `enabled` becomes true; calls onDone when settled.
+function Scramble({
+  text,
+  enabled = true,
+  onDone,
+}: {
+  text: string
+  enabled?: boolean
+  onDone?: () => void
+}) {
+  const ref = useRef<HTMLSpanElement>(null)
+  useEffect(() => {
+    const node = ref.current
+    if (!node || !enabled) return
+    node.textContent = text
+    const anim = animate(node, {
+      textContent: scrambleText({
+        chars: 'A-Za-z ',
+        ease: 'outQuad',
+        revealRate: 50,
+        settleDuration: 240,
+      }),
+      onComplete: () => onDone?.(),
+    })
+    return () => {
+      anim.pause()
+      node.textContent = text
+    }
+  }, [enabled, text])
+  return <span ref={ref}>{text}</span>
+}
+
+// Same scramble, but triggered the first time the heading scrolls into view.
+function ScrambleInView({ text }: { text: string }) {
+  const ref = useRef<HTMLSpanElement>(null)
+  useEffect(() => {
+    const node = ref.current
+    if (!node) return
+    let anim: ReturnType<typeof animate> | undefined
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (!entries[0].isIntersecting) return
+        io.disconnect()
+        node.textContent = text
+        anim = animate(node, {
+          textContent: scrambleText({
+            chars: 'A-Za-z ',
+            ease: 'outQuad',
+            revealRate: 45,
+            settleDuration: 220,
+          }),
+        })
+      },
+      { threshold: 0.5 },
+    )
+    io.observe(node)
+    return () => {
+      io.disconnect()
+      anim?.pause()
+    }
+  }, [text])
+  return <span ref={ref}>{text}</span>
+}
+
 function LeftNav() {
   return (
     <nav className="fixed left-6 top-1/2 -translate-y-1/2 z-50 flex flex-col gap-4">
       {navItems.map((item) => (
         <a key={item.label} href={item.href} className="group flex items-center gap-3">
-          <div className="w-6 h-[1.5px] bg-neutral-300 group-hover:w-8 group-hover:bg-neutral-600 transition-all duration-300" />
+          <span className="material-symbols-rounded text-[20px] leading-none text-neutral-400 group-hover:text-neutral-700 transition-colors duration-300">
+            {item.icon}
+          </span>
           <span
             className="text-[11px] tracking-[0.2em] text-neutral-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap"
           >
@@ -163,7 +230,10 @@ function SwipeableCards() {
             key={card.id}
             className="absolute inset-0 rounded-sm select-none overflow-hidden"
             style={{
-              backgroundColor: '#faf6ec',
+              background:
+                'radial-gradient(125% 120% at 50% -10%, rgba(255,251,238,0.7) 0%, rgba(243,231,203,0) 55%),' +
+                'radial-gradient(110% 110% at 50% 115%, rgba(120,90,40,0.12) 0%, rgba(243,231,203,0) 60%),' +
+                '#f1e3c4',
               transform,
               transition,
               opacity,
@@ -216,100 +286,307 @@ function SwipeableCards() {
 }
 
 export default function App() {
+  const [revealed, setRevealed] = useState(false)
+  const revealStyle: React.CSSProperties = {
+    opacity: revealed ? 1 : 0,
+    transition: 'opacity 1000ms ease',
+  }
+  // Fallback so the page always reveals even if the scramble's onComplete misses.
+  useEffect(() => {
+    const id = setTimeout(() => setRevealed(true), 3000)
+    return () => clearTimeout(id)
+  }, [])
   return (
-    <div className="min-h-screen text-neutral-900 font-sans" style={{ backgroundColor: '#f2ead6' }}>
-      <LeftNav />
+    <div
+      className="min-h-screen text-neutral-900/90 font-sans"
+      style={{
+        backgroundColor: '#f2ead6',
+        backgroundImage: 'url(/bg.png)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundAttachment: 'fixed',
+      }}
+    >
+      {/* Frame */}
+      <div className="fixed inset-2 z-[55] pointer-events-none">
+        <div className="absolute inset-0 border-2 border-neutral-900" />
+        <div className="absolute inset-[4px] border border-neutral-900" />
+      </div>
 
-      {/* Logo */}
-      <header className="flex justify-center pt-8 pb-2">
-        <div className="border border-neutral-800 rounded-full px-8 py-2.5">
-          <span className="font-serif text-3xl tracking-wide">Inevitable</span>
-        </div>
+      <div style={revealStyle}>
+        <LeftNav />
+      </div>
+
+      {/* Logo + tagline (sticky, top-left) */}
+      <header className="fixed left-8 top-7 z-50 w-[210px]" style={revealStyle}>
+        <span className="font-serif text-2xl tracking-wide">Inevitable</span>
+        <p className="mt-3 text-[15px] text-neutral-900/90 leading-snug tracking-wide">
+          Philosophical and Psychological Capital
+        </p>
       </header>
 
-      {/* Tagline */}
-      <div className="text-center py-5">
-        <p className="text-[22px] text-neutral-400 tracking-wide">the world's only philosophical and psychological capital</p>
-      </div>
-      <div className="max-w-xl mx-auto px-6">
-        <div className="border-t border-neutral-200" style={{ borderTopWidth: '0.5px' }} />
-      </div>
-
       {/* Hero */}
-      <section id="inevitable" className="max-w-xl mx-auto px-6 pt-10 pb-20 text-center">
-        <h1 className="font-serif text-[2.75rem] leading-[1.18] tracking-[-0.01em] mb-10">
-          Technology has always been a human-making project
+      <section id="inevitable" className="max-w-6xl mx-auto px-6 pt-44 pb-20 text-center">
+        <h1
+          className="font-serif leading-[1.04] tracking-[-0.02em] mb-10"
+          style={{ fontSize: 'clamp(48px, 9vw, 128px)' }}
+        >
+          <Scramble text="Technology as a Human-Making Project" onDone={() => setRevealed(true)} />
         </h1>
-
-        {/* Video placeholder */}
-        <div className="relative w-full aspect-video bg-neutral-100 rounded-sm flex items-end justify-center pb-8 group cursor-pointer overflow-hidden">
-          <div className="absolute inset-0 bg-neutral-200/0 group-hover:bg-neutral-200/30 transition-colors" />
-          <span className="text-[18px] text-neutral-600 font-light relative z-10">Play Our Manifesto</span>
-        </div>
       </section>
 
-      {/* Perspectives */}
-      <section className="max-w-xl mx-auto px-6 pt-16 pb-20">
-        <div className="border-t border-neutral-200 mb-16" style={{ borderTopWidth: '0.5px' }} />
+      <div style={revealStyle}>
+      {/* Play our Manifesto */}
+      <section className="max-w-4xl mx-auto px-6 pb-24">
+        <h2 className="font-serif text-[2.25rem] text-center mb-8"><ScrambleInView text="Play our Manifesto" /></h2>
 
-        {/* Q1 */}
-        <div className="mb-20">
-          <h2 className="font-serif text-[2.25rem] leading-[1.18] tracking-[-0.01em] mb-12">
-            What makes Inevitable unique?
-          </h2>
+        {/* Retro TV cabinet — its screen plays the manifesto */}
+        <figure className="relative mx-auto">
+          <div
+            className="relative overflow-hidden"
+            style={{
+              borderRadius: 30,
+              padding: '24px 24px 0',
+              background:
+                // wood grain streaks
+                'repeating-linear-gradient(94deg, rgba(40,22,8,0.28) 0px, rgba(40,22,8,0) 2px, rgba(255,225,180,0.05) 5px, rgba(40,22,8,0) 9px),' +
+                'repeating-linear-gradient(91deg, rgba(20,10,2,0.18) 0px, rgba(20,10,2,0) 3px, rgba(20,10,2,0) 11px),' +
+                // base walnut tone
+                'linear-gradient(158deg, #7a4d2b 0%, #5e3a20 52%, #492c17 100%)',
+              boxShadow:
+                '0 34px 70px -24px rgba(30,18,4,0.6),' +
+                'inset 0 2px 2px rgba(255,210,150,0.35),' +
+                'inset 0 -10px 20px rgba(20,10,2,0.45),' +
+                'inset 0 0 0 1px rgba(30,16,4,0.5)',
+            }}
+          >
+            {/* Screen bezel */}
+            <div
+              className="relative"
+              style={{
+                borderRadius: 18,
+                padding: 16,
+                background: 'linear-gradient(#39322a, #2b251e)',
+                boxShadow: 'inset 0 2px 10px rgba(0,0,0,0.65), inset 0 0 0 1px rgba(0,0,0,0.45)',
+              }}
+            >
+              {/* Manifesto card — the screen; mirrors the /manifesto intro graphic */}
+              <a
+                href="/manifesto"
+                aria-label="What is an image? — Play our manifesto"
+                className="group relative block w-full aspect-video rounded-sm overflow-hidden cursor-pointer"
+                style={{ background: '#f2ead6 url(/story-bg.png) center / cover no-repeat' }}
+              >
+                {/* The graphic, centered and large, gently scales on hover */}
+                <div className="absolute inset-0 flex items-center justify-center transition-transform duration-700 ease-out group-hover:scale-[1.03]">
+                  <div
+                    className="font-serif text-center text-neutral-900/85 leading-[1.04] tracking-[-0.02em]"
+                    style={{ fontSize: 'clamp(34px, 8vw, 84px)' }}
+                  >
+                    <div>What is an</div>
+                    <div className="flex items-center justify-center gap-[0.18em]">
+                      <img
+                        src="/monalisa.png"
+                        alt=""
+                        draggable={false}
+                        className="w-auto rounded-md object-cover shadow-xl transition-transform duration-700 ease-out group-hover:scale-105"
+                        style={{ height: '1.05em' }}
+                      />
+                      <span>Image?</span>
+                    </div>
+                  </div>
+                </div>
 
-          {/* Demis Hassabis quote callout */}
-          <div className="rounded-sm p-6 mb-10 border border-neutral-200/60" style={{ backgroundColor: '#faf6ec' }}>
-            <p className="font-serif text-[1.2rem] text-neutral-700 leading-relaxed italic mb-5">
-              "I think we need new great philosophers to come about, hopefully in the next 5 to 10 years, to understand the implications of this."
-            </p>
-            <div className="flex flex-wrap items-center gap-2 text-[13px]">
-              <span className="font-medium text-neutral-600">Demis Hassabis on the implications of AI</span>
-              <span className="text-neutral-300">·</span>
-              <span className="text-neutral-500">CEO, Google DeepMind</span>
+                {/* Hover veil + play hint */}
+                <div className="pointer-events-none absolute inset-0 bg-neutral-900/0 transition-colors duration-500 group-hover:bg-neutral-900/[0.04]" />
+                <span className="pointer-events-none absolute bottom-5 left-1/2 -translate-x-1/2 text-[14px] text-neutral-700 opacity-0 translate-y-1 transition-all duration-500 group-hover:opacity-100 group-hover:[transform:translate(-50%,0)]">
+                  Enter the Manifesto →
+                </span>
+              </a>
+
+              {/* CRT glass glare */}
+              <div
+                className="pointer-events-none absolute"
+                style={{
+                  inset: 16,
+                  borderRadius: 6,
+                  background:
+                    'linear-gradient(120deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.05) 22%, rgba(255,255,255,0) 44%)',
+                }}
+              />
+            </div>
+
+            {/* Control panel */}
+            <div className="flex items-center justify-between" style={{ padding: '14px 12px 18px' }}>
+              <span className="font-serif italic" style={{ fontSize: 15, color: 'rgba(235,210,165,0.8)' }}>
+                Inevitable
+              </span>
+              <div className="flex items-center" style={{ gap: 16 }}>
+                {/* Power light */}
+                <span
+                  style={{
+                    width: 9,
+                    height: 9,
+                    borderRadius: '50%',
+                    background: 'radial-gradient(circle at 35% 30%, #ffd27a, #d8741f)',
+                    boxShadow: '0 0 8px rgba(216,116,31,0.85)',
+                  }}
+                />
+                {/* Tuning knobs */}
+                {[0, 1].map((i) => (
+                  <span
+                    key={i}
+                    className="relative"
+                    style={{
+                      width: 26,
+                      height: 26,
+                      borderRadius: '50%',
+                      background: 'radial-gradient(circle at 35% 30%, #f3ecd9, #b9a983 75%, #8f7f5c)',
+                      boxShadow: '0 2px 4px rgba(40,28,8,0.4), inset 0 1px 1px rgba(255,255,255,0.6)',
+                    }}
+                  >
+                    <span
+                      className="absolute"
+                      style={{ left: '50%', top: 3, width: 2, height: 8, marginLeft: -1, borderRadius: 1, background: 'rgba(70,52,22,0.6)' }}
+                    />
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
 
-          <div className="space-y-5 text-[17px] text-neutral-600 leading-relaxed">
-            <p>
-              We're the only Humanities Capital in the world.
-            </p>
-            <p>
-              Humanities is the differentiator. When anything can be built, what to build and how that builds us is what differentiates us.
-            </p>
-            <p>
-              How do you build in a world that's changing every day? You build around something that's constant: human nature.
-            </p>
-            <p>
-              We think of products as materialized philosophy. Great products create new users.
-            </p>
-            <p>
-              We see — and help founders see — the philosophical stakes of building products.
-            </p>
-            <p>
-              Most startups don't have a systematic way to understand the laws of human nature.
-            </p>
-            <p>
-              Knowing which parts of human nature are malleable and which ones are most resistant to change could be the difference between a winning product and otherwise.
-            </p>
-            <p>
-              We love founders who reimagine what it means to be human in an AI-native world.
-            </p>
-            <p>
-              We overlay the conceptual newness that AI affords with the scientific principles of human nature.
-            </p>
-            <p>
-              We forge what's changing and what's constant in a crucible of what's possible, thinkable and experienceable.
-            </p>
+          {/* Feet */}
+          <div className="flex justify-between" style={{ margin: '0 48px' }}>
+            {[0, 1].map((i) => (
+              <span
+                key={i}
+                style={{
+                  width: 72,
+                  height: 12,
+                  borderRadius: '0 0 8px 8px',
+                  background: 'linear-gradient(#5e3a20, #3e2614)',
+                  boxShadow: '0 7px 11px -4px rgba(30,18,4,0.55)',
+                }}
+              />
+            ))}
+          </div>
+        </figure>
+      </section>
+
+      {/* Perspectives */}
+      <section className="max-w-3xl mx-auto px-6 pt-16 pb-20">
+        <div className="border-t border-neutral-200 mb-16" style={{ borderTopWidth: '0.5px' }} />
+
+        {/* Q1 — skeuomorphic 18th-century manuscript card */}
+        <div className="mb-20">
+          <div
+            className="relative overflow-hidden"
+            style={{
+              borderRadius: 4,
+              border: '1px solid rgba(70, 52, 22, 0.5)',
+              background:
+                'radial-gradient(125% 120% at 50% -10%, rgba(255,251,238,0.7) 0%, rgba(243,231,203,0) 55%),' +
+                'radial-gradient(110% 110% at 50% 115%, rgba(120,90,40,0.12) 0%, rgba(243,231,203,0) 60%),' +
+                '#f1e3c4',
+              boxShadow:
+                '0 2px 4px rgba(0,0,0,0.05),' +
+                '0 10px 22px rgba(0,0,0,0.09),' +
+                '0 30px 60px rgba(58,40,12,0.22),' +
+                'inset 0 1px 0 rgba(255,255,255,0.55),' +
+                'inset 0 0 110px rgba(120,90,40,0.10)',
+            }}
+          >
+            {/* Aged-paper texture */}
+            <div
+              className="pointer-events-none absolute inset-0"
+              style={{
+                backgroundImage: 'url(/story-bg.png)',
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                opacity: 0.16,
+                mixBlendMode: 'multiply',
+              }}
+            />
+
+            {/* Ruled frames */}
+            <div className="pointer-events-none absolute inset-[14px] border" style={{ borderColor: 'rgba(70, 52, 22, 0.4)' }} />
+            <div className="pointer-events-none absolute inset-[19px] border-[0.5px]" style={{ borderColor: 'rgba(70, 52, 22, 0.28)' }} />
+
+            {/* Corner fleurons */}
+            {['top-[26px] left-[26px]', 'top-[26px] right-[26px]', 'bottom-[26px] left-[26px]', 'bottom-[26px] right-[26px]'].map((pos) => (
+              <span key={pos} className={`pointer-events-none absolute ${pos} font-serif text-[15px] leading-none`} style={{ color: 'rgba(90, 68, 30, 0.55)' }}>
+                ✦
+              </span>
+            ))}
+
+            <div className="relative px-10 py-14 sm:px-16 sm:py-16">
+              <h2 className="font-serif text-[2.25rem] leading-[1.16] tracking-[-0.01em] text-center mb-9" style={{ color: '#3f3320' }}>
+                <ScrambleInView text="What makes Inevitable unique?" />
+              </h2>
+
+              {/* Demis Hassabis quote — illuminated marginalia */}
+              <div
+                className="mx-auto mb-10 max-w-md pl-5"
+                style={{ borderLeft: '2px solid rgba(90, 68, 30, 0.4)' }}
+              >
+                <p className="font-serif text-[1.32rem] leading-relaxed italic mb-4" style={{ color: '#4a3f2a' }}>
+                  “I think we need new great philosophers to come about, hopefully in the next 5 to 10 years, to understand the implications of this.”
+                </p>
+                <div className="flex flex-wrap items-center gap-2 text-[13px]" style={{ color: 'rgba(90, 68, 30, 0.8)' }}>
+                  <span className="font-medium">Demis Hassabis on the implications of AI</span>
+                  <span style={{ opacity: 0.45 }}>·</span>
+                  <span style={{ opacity: 0.8 }}>CEO, Google DeepMind</span>
+                </div>
+              </div>
+
+              <div className="space-y-5 font-serif text-[20px] leading-[1.7]" style={{ color: '#4a3f2a' }}>
+                <p>
+                  <span
+                    className="float-left font-serif mr-3"
+                    style={{ fontSize: '4.2rem', lineHeight: 0.8, color: '#3f3320', marginTop: 4 }}
+                  >
+                    W
+                  </span>
+                  e&apos;re the only Humanities Capital in the world.
+                </p>
+                <p>
+                  Humanities is the differentiator. When anything can be built, what to build and how that builds us is what differentiates us.
+                </p>
+                <p>
+                  How do you build in a world that&apos;s changing every day? You build around something that&apos;s constant: human nature.
+                </p>
+                <p>
+                  We think of products as materialized philosophy. Great products create new users.
+                </p>
+                <p>
+                  We see — and help founders see — the philosophical stakes of building products.
+                </p>
+                <p>
+                  Most startups don&apos;t have a systematic way to understand the laws of human nature.
+                </p>
+                <p>
+                  Knowing which parts of human nature are malleable and which ones are most resistant to change could be the difference between a winning product and otherwise.
+                </p>
+                <p>
+                  We love founders who reimagine what it means to be human in an AI-native world.
+                </p>
+                <p>
+                  We overlay the conceptual newness that AI affords with the scientific principles of human nature.
+                </p>
+                <p>
+                  We forge what&apos;s changing and what&apos;s constant in a crucible of what&apos;s possible, thinkable and experienceable.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
 
         <div className="border-t border-neutral-200 mb-16" style={{ borderTopWidth: '0.5px' }} />
 
         {/* Q2 */}
-        <div>
-          <h2 className="font-serif text-[2.25rem] leading-[1.18] tracking-[-0.01em] mb-12">
-            Who do we wish to back?
+        <div className="max-w-xl mx-auto">
+          <h2 className="font-serif text-[2.25rem] leading-[1.18] tracking-[-0.01em] text-center mb-12">
+            <ScrambleInView text="Who do we wish to back?" />
           </h2>
 
           <p className="text-[14px] text-neutral-400 mb-7">What we back</p>
@@ -336,11 +613,11 @@ export default function App() {
       <section id="fellowship" className="py-20">
         {/* Header */}
         <div className="max-w-xl mx-auto px-6 text-center mb-16">
-          <h2 className="font-serif text-[2.25rem] mb-3">The Inevitable Fellowship</h2>
+          <h2 className="font-serif text-[2.25rem] mb-3"><ScrambleInView text="The Inevitable Fellowship" /></h2>
           <p className="text-[16px] text-neutral-500 mb-6">A tech + philosophy fellowship</p>
           <hr className="border-neutral-200 mb-8" />
           <p className="text-[18px] text-neutral-600 leading-relaxed mb-3">
-            In addition to seed funding of <span className="text-neutral-900">$100k</span>, you get access to a completely new way of thinking about products.
+            In addition to seed funding of <span className="text-neutral-900/90">$100k</span>, you get access to a completely new way of thinking about products.
           </p>
           <p className="text-[18px] text-neutral-500 leading-relaxed">
             One that's rooted in science and philosophy.
@@ -353,11 +630,11 @@ export default function App() {
             Three core pillars lay the foundations of an Inevitable founder
           </p>
 
-          <div className="grid grid-cols-3 gap-px bg-neutral-200">
+          <div className="grid grid-cols-3 divide-x divide-neutral-300/40">
             {/* Microscope */}
-            <div className="bg-[#f2ead6] px-10 py-12 flex flex-col">
+            <div className="px-10 py-12 flex flex-col">
               <div className="mb-8 flex justify-center">
-                <img src="/microscope.png" alt="Microscope" className="w-36 h-36 object-contain opacity-85 mix-blend-multiply" />
+                <img src="/microscope.png" alt="Microscope" className="w-48 h-48 object-contain opacity-85 mix-blend-multiply" />
               </div>
               <h3 className="font-serif text-[1.5rem] mb-6 text-center">Microscope</h3>
               <p className="text-[15px] text-neutral-500 leading-relaxed mb-6 text-center">
@@ -380,9 +657,9 @@ export default function App() {
             </div>
 
             {/* Telescope */}
-            <div className="bg-[#f2ead6] px-10 py-12 flex flex-col">
+            <div className="px-10 py-12 flex flex-col">
               <div className="mb-8 flex justify-center">
-                <img src="/telescope.png" alt="Telescope" className="w-36 h-36 object-contain opacity-85 mix-blend-multiply" />
+                <img src="/telescope.png" alt="Telescope" className="w-48 h-48 object-contain opacity-85 mix-blend-multiply" />
               </div>
               <h3 className="font-serif text-[1.5rem] mb-6 text-center">Telescope</h3>
               <p className="text-[15px] text-neutral-500 leading-relaxed mb-6 text-center">
@@ -402,9 +679,9 @@ export default function App() {
             </div>
 
             {/* Kaleidoscope */}
-            <div className="bg-[#f2ead6] px-10 py-12 flex flex-col">
+            <div className="px-10 py-12 flex flex-col">
               <div className="mb-8 flex justify-center">
-                <img src="/kaleidoscope.png" alt="Kaleidoscope" className="w-36 h-36 object-contain opacity-85 mix-blend-multiply" />
+                <img src="/kaleidoscope.png" alt="Kaleidoscope" className="w-48 h-48 object-contain opacity-85 mix-blend-multiply" />
               </div>
               <h3 className="font-serif text-[1.5rem] mb-6 text-center">Kaleidoscope</h3>
               <p className="text-[15px] text-neutral-500 leading-relaxed mb-6 text-center">
@@ -427,49 +704,52 @@ export default function App() {
           </div>
         </div>
 
-        {/* Philosophy Labs */}
-        <div className="max-w-xl mx-auto px-6 mb-16">
-          <h3 className="font-serif text-[1.6rem] text-neutral-700 mb-6 text-center">Philosophy Labs</h3>
-          <p className="text-[17px] text-neutral-600 text-center mb-10 leading-relaxed">
-            Apply the Inevitable immersion to talks led by leading researchers and thinkers.
-          </p>
+        {/* Philosophy Labs + Inevitable IP — two columns */}
+        <div className="max-w-4xl mx-auto px-6 mb-16">
+          <div className="grid md:grid-cols-2 gap-x-14 gap-y-12">
+            {/* Philosophy Labs */}
+            <div>
+              <h3 className="font-serif text-[1.6rem] text-neutral-700 mb-4">Philosophy Labs</h3>
+              <p className="text-[17px] text-neutral-600 mb-8 leading-relaxed">
+                Apply the Inevitable immersion to talks led by leading researchers and thinkers.
+              </p>
 
-          <div className="space-y-0 mb-12">
-            <p className="text-[14px] text-neutral-400 mb-5">Salons</p>
-            {[
-              { speaker: 'Blaise Aguera', title: 'What is Intelligence?' },
-              { speaker: 'Iyad Rahwan', title: 'Building Trust with AI Agents' },
-            ].map((salon, i) => (
-              <div key={i}>
-                {i > 0 && <div className="border-t border-neutral-100" />}
-                <div className="flex items-baseline justify-between py-3.5">
-                  <span className="text-[16px] text-neutral-700">{salon.speaker}</span>
-                  <span className="text-[15px] text-neutral-400 italic">{salon.title}</span>
-                </div>
+              <div className="space-y-0">
+                <p className="text-[14px] text-neutral-400 mb-4">Salons</p>
+                {[
+                  { speaker: 'Blaise Aguera', title: 'What is Intelligence?' },
+                  { speaker: 'Iyad Rahwan', title: 'Building Trust with AI Agents' },
+                ].map((salon, i) => (
+                  <div key={i}>
+                    {i > 0 && <div className="border-t border-neutral-100" />}
+                    <div className="flex items-baseline justify-between py-3.5">
+                      <span className="text-[16px] text-neutral-700">{salon.speaker}</span>
+                      <span className="text-[15px] text-neutral-400 italic">{salon.title}</span>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
+            </div>
+
+            {/* Inevitable IP */}
+            <div className="md:border-l md:border-neutral-200 md:pl-14">
+              <h3 className="font-serif text-[1.6rem] text-neutral-700 mb-4">Inevitable IP</h3>
+              <p className="text-[17px] text-neutral-600 leading-relaxed">
+                Access to Inevitable's proprietary AI platform which extracts concepts from papers, products, protocols and models.
+              </p>
+            </div>
           </div>
 
-          <hr className="border-neutral-200 mb-10" />
-
-          {/* Inevitable IP */}
-          <div className="text-center mb-12">
-            <p className="font-serif text-[1.4rem] text-neutral-600 mb-4">Inevitable IP</p>
-            <p className="text-[16px] text-neutral-600 leading-relaxed">
-              Access to Inevitable's proprietary AI platform which extracts concepts from papers, products, protocols and models.
-            </p>
-          </div>
-
-          <hr className="border-neutral-200 mb-10" />
+          <hr className="border-neutral-200 mt-20 mb-12" />
 
           {/* FAQ */}
           <div className="text-center">
-            <p className="text-[14px] text-neutral-400 mb-5">FAQ</p>
-            <ul className="space-y-2.5">
+            <p className="text-[15px] text-neutral-400 mb-8">FAQ</p>
+            <ul className="space-y-4">
               {faqs.map((q, i) => (
                 <li
                   key={i}
-                  className="text-[17px] text-neutral-500 hover:text-neutral-900 cursor-pointer transition-colors duration-200"
+                  className="text-[19px] text-neutral-500 hover:text-neutral-900/90 cursor-pointer transition-colors duration-200"
                 >
                   {q}
                 </li>
@@ -482,7 +762,7 @@ export default function App() {
       {/* Research */}
       <section id="research" className="max-w-xl mx-auto px-6 py-20">
         <h2 className="font-serif text-[2.25rem] leading-[1.2] text-center mb-14">
-          How We Think About<br />AI &amp; The Human
+          <ScrambleInView text="How We Think About" /><br /><ScrambleInView text="AI & The Human" />
         </h2>
 
         <div className="flex flex-col items-center">
@@ -496,7 +776,7 @@ export default function App() {
 
       {/* Team */}
       <section id="team" className="max-w-xl mx-auto px-6 py-20">
-        <h2 className="font-serif text-[2.25rem] text-center mb-12">Brought to you by</h2>
+        <h2 className="font-serif text-[2.25rem] text-center mb-12"><ScrambleInView text="Brought to you by" /></h2>
 
         <div className="flex gap-10 items-start">
           {/* Portrait */}
@@ -520,11 +800,6 @@ export default function App() {
                   desc: 'Ran internal incubator and built the largest innovation program at Yahoo',
                 },
                 {
-                  logo: '/logos/slp-logo.png',
-                  title: 'SLP Fellowship',
-                  desc: 'Ran SLP fellowship for entrepreneurs',
-                },
-                {
                   logo: '/logos/daywise.png',
                   title: 'Founder, Daywise',
                   desc: 'Invented notification batching — focus layer for the internet. Influenced Apple and Google to build Screen Time in every phone.',
@@ -533,6 +808,11 @@ export default function App() {
                   logo: '/logos/berkeley.png',
                   title: 'Philosophy × AI Fellow, Berkeley',
                   desc: 'Supported by Reid Hoffman',
+                },
+                {
+                  logo: '/logos/duke.png',
+                  title: 'Behavioral Science Researcher, Duke',
+                  desc: 'Research on the science of human nature and decision-making',
                 },
                 {
                   logo: '/logos/cred.webp',
@@ -571,6 +851,7 @@ export default function App() {
       <footer className="border-t border-neutral-100 py-16 text-center">
         <p className="font-serif text-[2rem] text-neutral-200">Footer</p>
       </footer>
+      </div>
     </div>
   )
 }
