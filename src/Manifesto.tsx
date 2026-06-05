@@ -135,7 +135,7 @@ const ROLE = {
   },
   viewer: {
     heading: 'Who sees it',
-    pos: { right: '10%', top: '24%' } as React.CSSProperties,
+    pos: { right: '10%', top: '8%' } as React.CSSProperties,
     align: 'flex-end' as const,
     cardBelow: true,
     pull: -34,
@@ -313,20 +313,20 @@ function ConceptionCard({ text }: { text: string }) {
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 10,
+          gap: 7,
           fontFamily: FONT,
-          fontSize: 13,
+          fontSize: 11.5,
           fontWeight: 600,
-          color: '#7a4d2b',
+          color: 'rgba(0, 0, 0, 0.55)',
           marginBottom: 10,
         }}
       >
         <span
           className="material-symbols-rounded"
           style={{
-            fontSize: 30,
+            fontSize: 20,
             lineHeight: 1,
-            color: '#7a4d2b',
+            color: 'rgba(0, 0, 0, 0.55)',
             fontVariationSettings: "'wght' 300, 'FILL' 0, 'GRAD' 0, 'opsz' 48",
           }}
         >
@@ -337,9 +337,9 @@ function ConceptionCard({ text }: { text: string }) {
       <div
         style={{
           fontFamily: SERIF,
-          fontSize: 'clamp(26px, 2.4vw, 38px)',
+          fontSize: 'clamp(18px, 1.5vw, 28px)',
           lineHeight: 1.02,
-          color: '#7a4d2b',
+          color: 'rgba(0, 0, 0, 0.55)',
           marginBottom: description ? 12 : 0,
         }}
       >
@@ -689,7 +689,8 @@ export default function Manifesto() {
         )
       })}
 
-      {/* Final synthesis slide */}
+      {/* Final synthesis slide — mirrors the intro: text left, full-bleed
+          morphing animation filling the right column. */}
       <div
         ref={finalRef}
         style={{
@@ -699,23 +700,38 @@ export default function Manifesto() {
           pointerEvents: 'none',
           zIndex: 8,
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))',
-          alignItems: 'center',
-          gap: 'clamp(32px, 6vw, 96px)',
-          padding: 'clamp(36px, 8vw, 120px)',
+          gridTemplateColumns: '1fr 1fr',
           background: 'rgba(245, 241, 234, 0.42)',
           backdropFilter: 'blur(3px)',
           WebkitBackdropFilter: 'blur(3px)',
         }}
       >
+        {/* Left — the synthesis text */}
         <div
           style={{
-            position: 'relative',
-            width: 'min(440px, 72vw)',
-            aspectRatio: '1 / 1',
-            justifySelf: 'center',
+            display: 'flex',
+            alignItems: 'center',
+            padding: 'clamp(36px, 6vw, 120px)',
+            fontFamily: SERIF,
+            fontSize: 'clamp(26px, 3.6vw, 52px)',
+            lineHeight: 1.12,
+            color: 'rgba(0, 0, 0, 0.74)',
           }}
         >
+        <div>
+          <span style={{ display: 'block' }}>The image has moved from</span>
+          <span style={{ display: 'block' }}>hand-made interpretation</span>
+          <span style={{ display: 'block' }}>to mechanical trace</span>
+          <span style={{ display: 'block' }}>to editable networked signal</span>
+          <span style={{ display: 'block' }}>to algorithmic model</span>
+          <span style={{ display: 'block' }}>
+            until the world itself is no longer required for the image to exist.
+          </span>
+        </div>
+        </div>
+
+        {/* Right — full column width/height morphing animation */}
+        <div style={{ position: 'relative', overflow: 'hidden' }}>
           {SLIDES.map((s, idx) => (
             <img
               key={s.src}
@@ -727,33 +743,12 @@ export default function Manifesto() {
                 inset: 0,
                 width: '100%',
                 height: '100%',
-                objectFit: s.src === '/networked.png' ? 'cover' : 'cover',
-                borderRadius: 6,
-                boxShadow: '0 30px 90px rgba(0, 0, 0, 0.42)',
+                objectFit: 'cover',
                 opacity: finalImageIndex === idx ? 1 : 0,
                 transition: 'opacity 650ms ease',
               }}
             />
           ))}
-        </div>
-        <div
-          style={{
-            justifySelf: 'start',
-            maxWidth: 620,
-            fontFamily: SERIF,
-            fontSize: 'clamp(26px, 3.6vw, 52px)',
-            lineHeight: 1.12,
-            color: 'rgba(0, 0, 0, 0.74)',
-          }}
-        >
-          <span style={{ display: 'block' }}>The image has moved from</span>
-          <span style={{ display: 'block' }}>hand-made interpretation</span>
-          <span style={{ display: 'block' }}>to mechanical trace</span>
-          <span style={{ display: 'block' }}>to editable networked signal</span>
-          <span style={{ display: 'block' }}>to algorithmic model</span>
-          <span style={{ display: 'block' }}>
-            until the world itself is no longer required for the image to exist.
-          </span>
         </div>
       </div>
 
