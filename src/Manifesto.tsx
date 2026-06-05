@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { animate, scrambleText } from 'animejs'
+import { animate, splitText, stagger } from 'animejs'
 
 // Each slide is one image type. As you scroll, the central image morphs
 // flat -> skewed -> flat in place, then dissolves to the next image. Three
@@ -28,7 +28,6 @@ const SLIDES: Slide[] = [
     label: 'Painting',
     object: 'A unique handmade object, one of a kind, in one place.',
     represents: [
-      'An idealized arrangement that never existed — the “impossible bouquet”; also wealth and transience.',
       "A representation of what was seen or unseen from the artist's perspective.",
     ],
     artist: { src: '/artist1.png', text: 'A named human, by hand, sometimes over years.' },
@@ -45,7 +44,7 @@ const SLIDES: Slide[] = [
       'A specific real vase that sat in front of the lens. “That-has-been.”',
       'A snapshot of time and place.',
     ],
-    artist: { src: '/artist3.png', text: 'A photographer who frames; light draws the image.' },
+    artist: { src: '/artist2.png', text: 'A photographer who frames; light draws the image.' },
     viewer: { src: '/viewer2.png', text: 'Many, through reproduction.' },
     tools: { src: '/tools2.png', text: 'Camera + chemistry (1839).' },
     conception:
@@ -73,7 +72,7 @@ const SLIDES: Slide[] = [
       'Not a thing seen but a thing shared — the meme, the post, the unit of attention.',
       'A picture whose meaning is rewritten by every caption, crop and repost.',
     ],
-    artist: { src: '/artist1.png', text: 'No single author — a crowd of posters, remixers and re-uploaders.' },
+    artist: { src: '/artist4.png', text: 'No single author — a crowd of posters, remixers and re-uploaders.' },
     viewer: { src: '/viewer4.png', text: 'Millions at once; the feed decides who sees it.' },
     tools: { src: '/tools1.png', text: 'Platforms, feeds, algorithms (2004–).' },
     conception:
@@ -86,8 +85,8 @@ const SLIDES: Slide[] = [
     represents: [
       'A best guess of what the vase should look like.',
     ],
-    artist: { src: '/artist3.png', text: 'Photographer + algorithms + engineers.' },
-    viewer: { src: '/viewer2.png', text: 'Everyone, instantly, on phones.' },
+    artist: { src: '/artist5.png', text: 'Photographer + algorithms + engineers.' },
+    viewer: { src: '/viewer5.png', text: 'Everyone, instantly, on phones.' },
     tools: { src: '/tools2.png', text: 'Smartphone: sensor + chip + ML (~2016).' },
     conception:
       'The one being modeled. The device anticipates your taste and “improves” the shot toward what it predicts you wanted. The human is no longer the maker — the hand is replaced by engineers’ priors — but the one whose desires are guessed and served.',
@@ -99,8 +98,8 @@ const SLIDES: Slide[] = [
     represents: [
       'The average of millions of flower pictures; no referent.',
     ],
-    artist: { src: '/artist1.png', text: 'Prompt-writer + model + millions of uncredited people.' },
-    viewer: { src: '/viewer3.png', text: 'Everyone; and the next model.' },
+    artist: { src: '/artist6.png', text: 'Prompt-writer + model + millions of uncredited people.' },
+    viewer: { src: '/viewer6.png', text: 'Everyone; and the next model.' },
     tools: { src: '/tools3.png', text: 'Neural net trained on scraped datasets; GANs (2014), diffusion (2022).' },
     conception:
       'Prompt and raw material. The human shrinks to a text string that steers the model — and expands into the millions of scraped images and labels that fed it. And when AI looks (face recognition), the human is simply the thing detected. The human is the corpus, and the object of the gaze.',
@@ -111,6 +110,7 @@ const STOPS_PER_IMAGE = 3 // flat, skewed, flat
 const STOPS = SLIDES.length * STOPS_PER_IMAGE
 const LAST_T = STOPS - 1 // max scroll position in stop-units
 const INTRO_STOPS = 1 // one viewport of scroll room for the intro, before slide 0
+const FINAL_STOPS = 1 // one final snap after the last image stop
 
 const FONT =
   '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, sans-serif'
@@ -135,19 +135,19 @@ const ROLE = {
   },
   viewer: {
     heading: 'Who sees it',
-    pos: { right: '14%', top: '10%' } as React.CSSProperties,
+    pos: { right: '10%', top: '24%' } as React.CSSProperties,
     align: 'flex-end' as const,
     cardBelow: true,
-    pull: -26,
-    img: { width: 'min(34vw, 34vh)', transform: 'rotateY(-22deg) translateZ(-120px)' } as React.CSSProperties,
+    pull: -34,
+    img: { width: 'min(46vw, 46vh)', transform: 'rotateY(-22deg) translateZ(-80px)' } as React.CSSProperties,
   },
   artist: {
     heading: 'Who created it',
-    pos: { left: '14%', bottom: '6%' } as React.CSSProperties,
+    pos: { left: '2%', bottom: '16%' } as React.CSSProperties,
     align: 'flex-start' as const,
     cardBelow: false,
-    pull: -100,
-    img: { width: 'min(56vw, 56vh)', transform: 'rotateY(16deg) translateZ(80px)' } as React.CSSProperties,
+    pull: -10,
+    img: { width: 'min(68vw, 68vh)', transform: 'rotateY(16deg) translateZ(120px)' } as React.CSSProperties,
   },
 }
 
@@ -172,7 +172,7 @@ const opacityFor = (t: number, idx: number): number => {
   return 1 - (t - b) // dissolve out
 }
 
-type ScrambleProps = {
+type TextSplitRevealProps = {
   text: string
   chars?: string
   delay?: number
@@ -181,34 +181,36 @@ type ScrambleProps = {
   style?: React.CSSProperties
 }
 
-function Scramble({
+function TextSplitReveal({
   text,
-  chars = 'a-zA-Z0-9!#$%&*?',
   delay = 0,
-  revealRate = 90,
-  settleDuration = 220,
+  revealRate = 36,
+  settleDuration = 700,
   style,
-}: ScrambleProps) {
+}: TextSplitRevealProps) {
   const ref = useRef<HTMLSpanElement>(null)
 
   useEffect(() => {
     const node = ref.current
     if (!node) return
     node.textContent = text
-    const anim = animate(node, {
-      textContent: scrambleText({
-        chars,
-        ease: 'outQuad',
-        revealRate,
-        settleDuration,
-        delay,
-      }),
+    const split = splitText(node, {
+      chars: true,
+      words: false,
+    })
+    const anim = animate(split.chars, {
+      opacity: [0, 1],
+      y: ['0.24em', '0em'],
+      duration: settleDuration,
+      delay: stagger(revealRate, { start: delay }),
+      ease: 'outExpo',
     })
     return () => {
       anim.pause()
+      split.revert()
       node.textContent = text
     }
-  }, [text, chars, delay, revealRate, settleDuration])
+  }, [text, delay, revealRate, settleDuration])
 
   return (
     <span ref={ref} style={style}>
@@ -279,15 +281,117 @@ function InfoCard({ heading, children, large = false, icon, style }: InfoCardPro
   )
 }
 
+function splitRoleDescription(text: string) {
+  const sentenceEnd = text.indexOf('.')
+  if (sentenceEnd === -1) return { role: text, description: '' }
+  return {
+    role: text.slice(0, sentenceEnd + 1),
+    description: text.slice(sentenceEnd + 1).trim(),
+  }
+}
+
+function ConceptionCard({ text }: { text: string }) {
+  const { role, description } = splitRoleDescription(text)
+
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        right: '3%',
+        bottom: '6%',
+        width: 'min(390px, 32vw)',
+        padding: '22px 24px',
+        background: 'rgba(245, 241, 234, 0.55)',
+        backdropFilter: 'blur(6px)',
+        WebkitBackdropFilter: 'blur(6px)',
+        border: '1px solid rgba(0, 0, 0, 0.18)',
+        borderRadius: 10,
+        boxShadow: '0 18px 50px rgba(0, 0, 0, 0.18)',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          fontFamily: FONT,
+          fontSize: 13,
+          fontWeight: 600,
+          color: '#7a4d2b',
+          marginBottom: 10,
+        }}
+      >
+        <span
+          className="material-symbols-rounded"
+          style={{
+            fontSize: 30,
+            lineHeight: 1,
+            color: '#7a4d2b',
+            fontVariationSettings: "'wght' 300, 'FILL' 0, 'GRAD' 0, 'opsz' 48",
+          }}
+        >
+          accessibility_new
+        </span>
+        <span>Conception of the Human</span>
+      </div>
+      <div
+        style={{
+          fontFamily: SERIF,
+          fontSize: 'clamp(26px, 2.4vw, 38px)',
+          lineHeight: 1.02,
+          color: '#7a4d2b',
+          marginBottom: description ? 12 : 0,
+        }}
+      >
+        {role}
+      </div>
+      {description && (
+        <div
+          style={{
+            fontFamily: FONT,
+            fontSize: 14.5,
+            lineHeight: 1.5,
+            fontWeight: 400,
+            color: 'rgba(0, 0, 0, 0.6)',
+          }}
+        >
+          {description}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function Manifesto() {
   const scrollRef = useRef<HTMLDivElement>(null)
   const centralRefs = useRef<(HTMLImageElement | null)[]>([])
   const sceneRefs = useRef<(HTMLDivElement | null)[]>([])
   const introRef = useRef<HTMLDivElement>(null)
+  const heroRef = useRef<HTMLDivElement>(null)
   const titleRef = useRef<HTMLDivElement>(null)
   const descRef = useRef<HTMLDivElement>(null)
+  const finalRef = useRef<HTMLDivElement>(null)
   const activeIndexRef = useRef(0)
+  const finalVisibleRef = useRef(false)
   const [activeIndex, setActiveIndex] = useState(0)
+  const [finalImageIndex, setFinalImageIndex] = useState(0)
+  const [heroImageIndex, setHeroImageIndex] = useState(0)
+
+  // Bottom final-slide morph: 1s per image.
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      setFinalImageIndex((idx) => (idx + 1) % SLIDES.length)
+    }, 1000)
+    return () => window.clearInterval(interval)
+  }, [])
+
+  // Top intro hero morph: slower, 2s per image.
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      setHeroImageIndex((idx) => (idx + 1) % SLIDES.length)
+    }, 2000)
+    return () => window.clearInterval(interval)
+  }, [])
 
   useEffect(() => {
     const scrollEl = scrollRef.current
@@ -303,25 +407,31 @@ export default function Manifesto() {
       const t = Math.max(0, Math.min(LAST_T, raw - INTRO_STOPS))
       // 0 while sitting on the intro, 1 once the first slide is fully in.
       const enter = clamp01(raw / INTRO_STOPS)
+      // The final synthesis slide fades in after the last flat AI image stop.
+      const final = clamp01(raw - (INTRO_STOPS + LAST_T))
+      const finalVisible = final > 0
+      if (finalVisible && !finalVisibleRef.current) setFinalImageIndex(0)
+      finalVisibleRef.current = finalVisible
 
       // Intro text crossfades out as the first slide fades in; the rest of the
       // fixed overlays (title, description) stay hidden until past the intro.
       if (introRef.current) introRef.current.style.opacity = String(1 - enter)
-      if (titleRef.current) titleRef.current.style.opacity = String(enter)
-      if (descRef.current) descRef.current.style.opacity = String(enter)
+      if (titleRef.current) titleRef.current.style.opacity = String(enter * (1 - final))
+      if (descRef.current) descRef.current.style.opacity = String(enter * (1 - final))
+      if (finalRef.current) finalRef.current.style.opacity = String(final)
 
       // Central images: opacity drives the dissolve between images, transform
       // drives the in-place flat <-> skewed morph + size reduction.
       centralRefs.current.forEach((img, idx) => {
         if (!img) return
         const p = clamp01(skewFor(t, idx))
-        img.style.opacity = String(opacityFor(t, idx) * enter)
+        img.style.opacity = String(opacityFor(t, idx) * enter * (1 - final))
         img.style.transform = `rotateY(${-24 * p}deg) skewY(${-6 * p}deg) scale(${1 - 0.22 * p})`
       })
 
       // Each slide's scene (accents + cards) fades in with that slide's skew.
       sceneRefs.current.forEach((layer, slideIdx) => {
-        if (layer) layer.style.opacity = String(clamp01(skewFor(t, slideIdx)))
+        if (layer) layer.style.opacity = String(clamp01(skewFor(t, slideIdx)) * (1 - final))
       })
 
       const focused = Math.floor(Math.round(t) / STOPS_PER_IMAGE)
@@ -356,7 +466,10 @@ export default function Manifesto() {
 
   return (
     <>
-      {/* Intro — sits over the first viewport, crossfades into slide 01 */}
+      {/* Intro — two columns over the first viewport. Left: the "What is an
+          Image?" box in the site's bg texture, scaled up and vertically
+          centered. Right: the morphing animation cycling every central image.
+          The whole thing crossfades into slide 01 as you scroll past it. */}
       <div
         ref={introRef}
         style={{
@@ -364,38 +477,81 @@ export default function Manifesto() {
           inset: 0,
           zIndex: 7,
           pointerEvents: 'none',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          alignItems: 'flex-start',
-          padding: '0 clamp(28px, 9vw, 140px)',
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
         }}
       >
+        {/* Left — the title, vertically centered, scaled 1.5x */}
         <div
           style={{
-            fontFamily: SERIF,
-            fontSize: 'clamp(52px, 11vw, 150px)',
-            lineHeight: 1.02,
-            letterSpacing: '-0.02em',
-            color: 'rgba(0, 0, 0, 0.82)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: 'clamp(24px, 4vw, 64px)',
           }}
         >
-          <div>What is an</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.18em' }}>
+          <div
+            style={{
+              transform: 'scale(1.5)',
+              fontFamily: SERIF,
+              fontSize: 'clamp(30px, 4.4vw, 68px)',
+              lineHeight: 1.02,
+              letterSpacing: '-0.02em',
+              color: 'rgba(0, 0, 0, 0.82)',
+              textAlign: 'center',
+            }}
+          >
+            <div>What is an</div>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.18em',
+              }}
+            >
+              <img
+                src="/monalisa.png"
+                alt=""
+                draggable={false}
+                style={{
+                  height: '0.92em',
+                  width: 'auto',
+                  borderRadius: 8,
+                  objectFit: 'cover',
+                  boxShadow: '0 12px 36px rgba(0, 0, 0, 0.35)',
+                }}
+              />
+              <span>Image?</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Right — the morphing animation, cycling every central image */}
+        <div
+          ref={heroRef}
+          style={{
+            position: 'relative',
+            overflow: 'hidden',
+          }}
+        >
+          {SLIDES.map((s, idx) => (
             <img
-              src="/monalisa.png"
+              key={s.src}
+              src={s.src}
               alt=""
               draggable={false}
               style={{
-                height: '0.92em',
-                width: 'auto',
-                borderRadius: 8,
+                position: 'absolute',
+                inset: 0,
+                width: '100%',
+                height: '100%',
                 objectFit: 'cover',
-                boxShadow: '0 12px 36px rgba(0, 0, 0, 0.35)',
+                opacity: heroImageIndex === idx ? 1 : 0,
+                transition: 'opacity 900ms ease',
               }}
             />
-            <span>Image?</span>
-          </div>
+          ))}
         </div>
       </div>
 
@@ -444,7 +600,7 @@ export default function Manifesto() {
                 margin: 'auto',
                 width: 'min(48vw, 48vh)',
                 height: 'min(48vw, 48vh)',
-                objectFit: 'cover',
+                objectFit: s.src === '/networked.png' ? 'cover' : 'cover',
                 borderRadius: 6,
                 boxShadow: '0 30px 80px rgba(0, 0, 0, 0.5)',
                 opacity: idx === 0 ? 1 : 0,
@@ -454,8 +610,8 @@ export default function Manifesto() {
           ))}
         </div>
 
-        {/* One scroll section per stop, plus the intro's scroll room */}
-        {Array.from({ length: STOPS + INTRO_STOPS }).map((_, idx) => (
+        {/* One scroll section per stop, plus the intro and final scroll room */}
+        {Array.from({ length: STOPS + INTRO_STOPS + FINAL_STOPS }).map((_, idx) => (
           <section
             key={idx}
             style={{
@@ -470,7 +626,6 @@ export default function Manifesto() {
       {/* Per-slide scene layers — accent images + cards, fade in with skew */}
       {SLIDES.map((s, slideIdx) => {
         const accents = [
-          { ...ROLE.tools, src: s.tools.src, text: s.tools.text },
           { ...ROLE.viewer, src: s.viewer.src, text: s.viewer.text },
           { ...ROLE.artist, src: s.artist.src, text: s.artist.text },
         ]
@@ -498,7 +653,7 @@ export default function Manifesto() {
                   draggable={false}
                   style={{
                     display: 'block',
-                    objectFit: 'contain',
+                    objectFit: 'cover',
                     filter: 'drop-shadow(0 20px 40px rgba(0,0,0,0.45))',
                     ...a.img,
                   }}
@@ -529,17 +684,78 @@ export default function Manifesto() {
                 </div>
               )
             })}
-            <InfoCard
-              heading="Conception of the Human"
-              large
-              icon="person"
-              style={{ position: 'absolute', right: '3%', bottom: '6%' }}
-            >
-              {s.conception}
-            </InfoCard>
+            <ConceptionCard text={s.conception} />
           </div>
         )
       })}
+
+      {/* Final synthesis slide */}
+      <div
+        ref={finalRef}
+        style={{
+          position: 'fixed',
+          inset: 0,
+          opacity: 0,
+          pointerEvents: 'none',
+          zIndex: 8,
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))',
+          alignItems: 'center',
+          gap: 'clamp(32px, 6vw, 96px)',
+          padding: 'clamp(36px, 8vw, 120px)',
+          background: 'rgba(245, 241, 234, 0.42)',
+          backdropFilter: 'blur(3px)',
+          WebkitBackdropFilter: 'blur(3px)',
+        }}
+      >
+        <div
+          style={{
+            position: 'relative',
+            width: 'min(440px, 72vw)',
+            aspectRatio: '1 / 1',
+            justifySelf: 'center',
+          }}
+        >
+          {SLIDES.map((s, idx) => (
+            <img
+              key={s.src}
+              src={s.src}
+              alt=""
+              draggable={false}
+              style={{
+                position: 'absolute',
+                inset: 0,
+                width: '100%',
+                height: '100%',
+                objectFit: s.src === '/networked.png' ? 'cover' : 'cover',
+                borderRadius: 6,
+                boxShadow: '0 30px 90px rgba(0, 0, 0, 0.42)',
+                opacity: finalImageIndex === idx ? 1 : 0,
+                transition: 'opacity 650ms ease',
+              }}
+            />
+          ))}
+        </div>
+        <div
+          style={{
+            justifySelf: 'start',
+            maxWidth: 620,
+            fontFamily: SERIF,
+            fontSize: 'clamp(26px, 3.6vw, 52px)',
+            lineHeight: 1.12,
+            color: 'rgba(0, 0, 0, 0.74)',
+          }}
+        >
+          <span style={{ display: 'block' }}>The image has moved from</span>
+          <span style={{ display: 'block' }}>hand-made interpretation</span>
+          <span style={{ display: 'block' }}>to mechanical trace</span>
+          <span style={{ display: 'block' }}>to editable networked signal</span>
+          <span style={{ display: 'block' }}>to algorithmic model</span>
+          <span style={{ display: 'block' }}>
+            until the world itself is no longer required for the image to exist.
+          </span>
+        </div>
+      </div>
 
       {/* Title + counter — above the object */}
       <div
@@ -566,7 +782,7 @@ export default function Manifesto() {
         >
           {String(activeIndex + 1).padStart(2, '0')} / {String(SLIDES.length).padStart(2, '0')}
         </div>
-        <Scramble
+        <TextSplitReveal
           key={activeIndex}
           text={slide.label}
           chars="a-zA-Z"

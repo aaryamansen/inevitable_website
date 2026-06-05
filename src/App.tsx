@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { animate, scrambleText } from 'animejs'
+import { animate, splitText, stagger } from 'animejs'
 
 const navItems = [
   { label: 'INEVITABLE', href: '#inevitable', icon: 'all_inclusive' },
@@ -29,8 +29,8 @@ const faqs = [
   'What does funding look like at the end?',
 ]
 
-// Scrambles its text in once `enabled` becomes true; calls onDone when settled.
-function Scramble({
+// Reveals split characters once `enabled` becomes true; calls onDone when settled.
+function TextSplitReveal({
   text,
   enabled = true,
   onDone,
@@ -40,46 +40,63 @@ function Scramble({
   onDone?: () => void
 }) {
   const ref = useRef<HTMLSpanElement>(null)
+  const onDoneRef = useRef(onDone)
+  onDoneRef.current = onDone
+
   useEffect(() => {
     const node = ref.current
     if (!node || !enabled) return
     node.textContent = text
+    const split = splitText(node, {
+      chars: true,
+      words: false,
+    })
     const anim = animate(node, {
-      textContent: scrambleText({
-        chars: 'A-Za-z ',
-        ease: 'outQuad',
-        revealRate: 50,
-        settleDuration: 240,
-      }),
-      onComplete: () => onDone?.(),
+      opacity: [0, 1],
+      duration: 120,
+      ease: 'linear',
+    })
+    const charsAnim = animate(split.chars, {
+      opacity: [0, 1],
+      y: ['0.28em', '0em'],
+      duration: 700,
+      delay: stagger(22),
+      ease: 'outExpo',
+      onComplete: () => onDoneRef.current?.(),
     })
     return () => {
       anim.pause()
+      charsAnim.pause()
+      split.revert()
       node.textContent = text
     }
   }, [enabled, text])
   return <span ref={ref}>{text}</span>
 }
 
-// Same scramble, but triggered the first time the heading scrolls into view.
-function ScrambleInView({ text }: { text: string }) {
+// Same split reveal, but triggered the first time the heading scrolls into view.
+function TextSplitInView({ text }: { text: string }) {
   const ref = useRef<HTMLSpanElement>(null)
   useEffect(() => {
     const node = ref.current
     if (!node) return
     let anim: ReturnType<typeof animate> | undefined
+    let split: ReturnType<typeof splitText> | undefined
     const io = new IntersectionObserver(
       (entries) => {
         if (!entries[0].isIntersecting) return
         io.disconnect()
         node.textContent = text
-        anim = animate(node, {
-          textContent: scrambleText({
-            chars: 'A-Za-z ',
-            ease: 'outQuad',
-            revealRate: 45,
-            settleDuration: 220,
-          }),
+        split = splitText(node, {
+          chars: true,
+          words: false,
+        })
+        anim = animate(split.chars, {
+          opacity: [0, 1],
+          y: ['0.24em', '0em'],
+          duration: 620,
+          delay: stagger(18),
+          ease: 'outExpo',
         })
       },
       { threshold: 0.5 },
@@ -88,6 +105,7 @@ function ScrambleInView({ text }: { text: string }) {
     return () => {
       io.disconnect()
       anim?.pause()
+      split?.revert()
     }
   }, [text])
   return <span ref={ref}>{text}</span>
@@ -291,7 +309,7 @@ export default function App() {
     opacity: revealed ? 1 : 0,
     transition: 'opacity 1000ms ease',
   }
-  // Fallback so the page always reveals even if the scramble's onComplete misses.
+  // Fallback so the page always reveals even if the split reveal's onComplete misses.
   useEffect(() => {
     const id = setTimeout(() => setRevealed(true), 3000)
     return () => clearTimeout(id)
@@ -321,7 +339,7 @@ export default function App() {
       <header className="fixed left-8 top-7 z-50 w-[210px]" style={revealStyle}>
         <span className="font-serif text-2xl tracking-wide">Inevitable</span>
         <p className="mt-3 text-[15px] text-neutral-900/90 leading-snug tracking-wide">
-          Philosophical and Psychological Capital
+          Philosophical & Psychological Capital
         </p>
       </header>
 
@@ -331,146 +349,37 @@ export default function App() {
           className="font-serif leading-[1.04] tracking-[-0.02em] mb-10"
           style={{ fontSize: 'clamp(48px, 9vw, 128px)' }}
         >
-          <Scramble text="Technology as a Human-Making Project" onDone={() => setRevealed(true)} />
+          <span style={{ display: 'block' }}>
+            <TextSplitReveal text="Technology as a" />
+          </span>
+          <span style={{ display: 'block', whiteSpace: 'nowrap' }}>
+            <TextSplitReveal text="Human-Making Project" onDone={() => setRevealed(true)} />
+          </span>
         </h1>
       </section>
 
       <div style={revealStyle}>
       {/* Play our Manifesto */}
       <section className="max-w-4xl mx-auto px-6 pb-24">
-        <h2 className="font-serif text-[2.25rem] text-center mb-8"><ScrambleInView text="Play our Manifesto" /></h2>
+        <h2 className="font-serif text-[2.25rem] text-center mb-8"><TextSplitInView text="Play our Manifesto" /></h2>
 
-        {/* Retro TV cabinet — its screen plays the manifesto */}
-        <figure className="relative mx-auto">
-          <div
-            className="relative overflow-hidden"
-            style={{
-              borderRadius: 30,
-              padding: '24px 24px 0',
-              background:
-                // wood grain streaks
-                'repeating-linear-gradient(94deg, rgba(40,22,8,0.28) 0px, rgba(40,22,8,0) 2px, rgba(255,225,180,0.05) 5px, rgba(40,22,8,0) 9px),' +
-                'repeating-linear-gradient(91deg, rgba(20,10,2,0.18) 0px, rgba(20,10,2,0) 3px, rgba(20,10,2,0) 11px),' +
-                // base walnut tone
-                'linear-gradient(158deg, #7a4d2b 0%, #5e3a20 52%, #492c17 100%)',
-              boxShadow:
-                '0 34px 70px -24px rgba(30,18,4,0.6),' +
-                'inset 0 2px 2px rgba(255,210,150,0.35),' +
-                'inset 0 -10px 20px rgba(20,10,2,0.45),' +
-                'inset 0 0 0 1px rgba(30,16,4,0.5)',
-            }}
-          >
-            {/* Screen bezel */}
-            <div
-              className="relative"
-              style={{
-                borderRadius: 18,
-                padding: 16,
-                background: 'linear-gradient(#39322a, #2b251e)',
-                boxShadow: 'inset 0 2px 10px rgba(0,0,0,0.65), inset 0 0 0 1px rgba(0,0,0,0.45)',
-              }}
-            >
-              {/* Manifesto card — the screen; mirrors the /manifesto intro graphic */}
-              <a
-                href="/manifesto"
-                aria-label="What is an image? — Play our manifesto"
-                className="group relative block w-full aspect-video rounded-sm overflow-hidden cursor-pointer"
-                style={{ background: '#f2ead6 url(/story-bg.png) center / cover no-repeat' }}
-              >
-                {/* The graphic, centered and large, gently scales on hover */}
-                <div className="absolute inset-0 flex items-center justify-center transition-transform duration-700 ease-out group-hover:scale-[1.03]">
-                  <div
-                    className="font-serif text-center text-neutral-900/85 leading-[1.04] tracking-[-0.02em]"
-                    style={{ fontSize: 'clamp(34px, 8vw, 84px)' }}
-                  >
-                    <div>What is an</div>
-                    <div className="flex items-center justify-center gap-[0.18em]">
-                      <img
-                        src="/monalisa.png"
-                        alt=""
-                        draggable={false}
-                        className="w-auto rounded-md object-cover shadow-xl transition-transform duration-700 ease-out group-hover:scale-105"
-                        style={{ height: '1.05em' }}
-                      />
-                      <span>Image?</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Hover veil + play hint */}
-                <div className="pointer-events-none absolute inset-0 bg-neutral-900/0 transition-colors duration-500 group-hover:bg-neutral-900/[0.04]" />
-                <span className="pointer-events-none absolute bottom-5 left-1/2 -translate-x-1/2 text-[14px] text-neutral-700 opacity-0 translate-y-1 transition-all duration-500 group-hover:opacity-100 group-hover:[transform:translate(-50%,0)]">
-                  Enter the Manifesto →
-                </span>
-              </a>
-
-              {/* CRT glass glare */}
-              <div
-                className="pointer-events-none absolute"
-                style={{
-                  inset: 16,
-                  borderRadius: 6,
-                  background:
-                    'linear-gradient(120deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.05) 22%, rgba(255,255,255,0) 44%)',
-                }}
-              />
-            </div>
-
-            {/* Control panel */}
-            <div className="flex items-center justify-between" style={{ padding: '14px 12px 18px' }}>
-              <span className="font-serif italic" style={{ fontSize: 15, color: 'rgba(235,210,165,0.8)' }}>
-                Inevitable
-              </span>
-              <div className="flex items-center" style={{ gap: 16 }}>
-                {/* Power light */}
-                <span
-                  style={{
-                    width: 9,
-                    height: 9,
-                    borderRadius: '50%',
-                    background: 'radial-gradient(circle at 35% 30%, #ffd27a, #d8741f)',
-                    boxShadow: '0 0 8px rgba(216,116,31,0.85)',
-                  }}
-                />
-                {/* Tuning knobs */}
-                {[0, 1].map((i) => (
-                  <span
-                    key={i}
-                    className="relative"
-                    style={{
-                      width: 26,
-                      height: 26,
-                      borderRadius: '50%',
-                      background: 'radial-gradient(circle at 35% 30%, #f3ecd9, #b9a983 75%, #8f7f5c)',
-                      boxShadow: '0 2px 4px rgba(40,28,8,0.4), inset 0 1px 1px rgba(255,255,255,0.6)',
-                    }}
-                  >
-                    <span
-                      className="absolute"
-                      style={{ left: '50%', top: 3, width: 2, height: 8, marginLeft: -1, borderRadius: 1, background: 'rgba(70,52,22,0.6)' }}
-                    />
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Feet */}
-          <div className="flex justify-between" style={{ margin: '0 48px' }}>
-            {[0, 1].map((i) => (
-              <span
-                key={i}
-                style={{
-                  width: 72,
-                  height: 12,
-                  borderRadius: '0 0 8px 8px',
-                  background: 'linear-gradient(#5e3a20, #3e2614)',
-                  boxShadow: '0 7px 11px -4px rgba(30,18,4,0.55)',
-                }}
-              />
-            ))}
-          </div>
-        </figure>
+        {/* The image cryptex — large, centered; links into the manifesto */}
+        <a
+          href="/manifesto"
+          aria-label="Enter the Manifesto"
+          className="group block mx-auto w-fit cursor-pointer"
+        >
+          <img
+            src="/cryptex.png"
+            alt="The image cryptex"
+            draggable={false}
+            className="mx-auto w-auto object-contain transition-transform duration-700 ease-out group-hover:scale-105"
+            style={{ maxWidth: 'min(620px, 88vw)', filter: 'drop-shadow(0 28px 56px rgba(30,18,4,0.32))' }}
+          />
+          <span className="mt-6 block text-center text-[14px] text-neutral-500 opacity-0 translate-y-1 transition-all duration-500 group-hover:opacity-100 group-hover:translate-y-0">
+            Enter the Manifesto →
+          </span>
+        </a>
       </section>
 
       {/* Perspectives */}
@@ -521,7 +430,7 @@ export default function App() {
 
             <div className="relative px-10 py-14 sm:px-16 sm:py-16">
               <h2 className="font-serif text-[2.25rem] leading-[1.16] tracking-[-0.01em] text-center mb-9" style={{ color: '#3f3320' }}>
-                <ScrambleInView text="What makes Inevitable unique?" />
+                <TextSplitInView text="What makes Inevitable unique?" />
               </h2>
 
               {/* Demis Hassabis quote — illuminated marginalia */}
@@ -586,7 +495,7 @@ export default function App() {
         {/* Q2 */}
         <div className="max-w-xl mx-auto">
           <h2 className="font-serif text-[2.25rem] leading-[1.18] tracking-[-0.01em] text-center mb-12">
-            <ScrambleInView text="Who do we wish to back?" />
+            <TextSplitInView text="Who do we wish to back?" />
           </h2>
 
           <p className="text-[14px] text-neutral-400 mb-7">What we back</p>
@@ -613,7 +522,7 @@ export default function App() {
       <section id="fellowship" className="py-20">
         {/* Header */}
         <div className="max-w-xl mx-auto px-6 text-center mb-16">
-          <h2 className="font-serif text-[2.25rem] mb-3"><ScrambleInView text="The Inevitable Fellowship" /></h2>
+          <h2 className="font-serif text-[2.25rem] mb-3"><TextSplitInView text="The Inevitable Fellowship" /></h2>
           <p className="text-[16px] text-neutral-500 mb-6">A tech + philosophy fellowship</p>
           <hr className="border-neutral-200 mb-8" />
           <p className="text-[18px] text-neutral-600 leading-relaxed mb-3">
@@ -762,7 +671,7 @@ export default function App() {
       {/* Research */}
       <section id="research" className="max-w-xl mx-auto px-6 py-20">
         <h2 className="font-serif text-[2.25rem] leading-[1.2] text-center mb-14">
-          <ScrambleInView text="How We Think About" /><br /><ScrambleInView text="AI & The Human" />
+          <TextSplitInView text="How We Think About" /><br /><TextSplitInView text="AI & The Human" />
         </h2>
 
         <div className="flex flex-col items-center">
@@ -776,7 +685,7 @@ export default function App() {
 
       {/* Team */}
       <section id="team" className="max-w-xl mx-auto px-6 py-20">
-        <h2 className="font-serif text-[2.25rem] text-center mb-12"><ScrambleInView text="Brought to you by" /></h2>
+        <h2 className="font-serif text-[2.25rem] text-center mb-12"><TextSplitInView text="Brought to you by" /></h2>
 
         <div className="flex gap-10 items-start">
           {/* Portrait */}
@@ -847,10 +756,6 @@ export default function App() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-neutral-100 py-16 text-center">
-        <p className="font-serif text-[2rem] text-neutral-200">Footer</p>
-      </footer>
       </div>
     </div>
   )
