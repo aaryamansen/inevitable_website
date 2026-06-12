@@ -316,18 +316,18 @@ export default function App() {
       <PageHeader />
 
       {/* Hero */}
-      <section className="relative min-h-[85svh] md:min-h-screen">
-        <picture className="absolute inset-0 block">
+      <section className="relative min-h-[85svh] md:min-h-0 md:flex md:flex-col md:mb-20">
+        <picture className="absolute inset-0 block md:static md:order-2 md:-mt-24 md:w-full">
           <source media="(max-width: 767px)" srcSet="/thinker-mobile.png" />
           <img
             src="/thinker-web.png"
             alt="Rodin's Thinker contemplating a datacenter"
-            className="h-full w-full object-cover object-bottom"
+            className="h-full w-full object-cover object-bottom md:h-auto md:w-full"
             draggable={false}
           />
         </picture>
 
-        <div className="relative px-7 pt-36 pb-10 text-center md:pt-40 md:pb-0 md:text-left md:pl-[272px] md:pr-10 lg:pl-[300px]">
+        <div className="relative px-7 pt-36 pb-10 text-center md:order-1 md:pt-40 md:pb-0 md:text-left md:pl-[272px] md:pr-10 lg:pl-[300px]">
           <h1
             className="font-serif leading-[1.05] tracking-[-0.02em] mb-7"
             style={{ fontSize: 'clamp(46px, 6.5vw, 92px)' }}
