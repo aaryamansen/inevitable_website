@@ -1,11 +1,62 @@
 import { useState, useRef, useEffect } from 'react'
-import { animate, splitText, stagger } from 'animejs'
+import { TextSplitReveal, TextSplitInView, LeftNav, PageFrame, PageHeader, Footer } from './shared'
 
-const navItems = [
-  { label: 'INEVITABLE', href: '#inevitable', icon: 'all_inclusive' },
-  { label: 'FELLOWSHIP', href: '#fellowship', icon: 'diversity_3' },
-  { label: 'RESEARCH', href: '#research', icon: 'science' },
-  { label: 'TEAM', href: '#team', icon: 'groups' },
+const tracks = [
+  {
+    name: 'AI × Science',
+    lead: 'The microscope found the cell. The telescope found the galaxy. What will the synthetic mind find?',
+    body: 'AI is the first scientific instrument we can point at anything — the cosmos, the cell, the human mind — and the first that can ask its own next question. We back founders building autonomous scientists, self-driving laboratories, and instruments that learn new things about humans and the world around us.',
+    questions: [
+      'What does discovery look like when hypotheses are generated, tested and revised faster than any human can read the results?',
+      'Can an autonomous scientist compress a century of research into a decade?',
+      'Could AI uncover laws of human nature that we are too human to see ourselves?',
+      'What is the scientist’s role when science no longer waits for one?',
+    ],
+  },
+  {
+    name: 'AI × Consumer Social',
+    lead: 'Relationship design is the new interaction design.',
+    body: 'For the first time, social is not only human to human. It is human to AI, human to human through AI — perhaps even AI to AI. We back founders building companions, social robots and synthetic social networks: forms of togetherness that have never existed before.',
+    questions: [
+      'What does friendship mean with a being that never sleeps, never forgets and never leaves?',
+      'What happens to a social network when some of its most interesting members aren’t human?',
+      'Can AI make human connection deeper rather than thinner?',
+      'What new rituals of belonging do synthetic minds make possible?',
+    ],
+  },
+  {
+    name: 'Future of the Internet',
+    lead: 'The next billion users of the internet won’t be human.',
+    body: 'The biggest consumer of the internet will soon be bots and agents — and the internet is one of the largest economies on Earth. We back founders redesigning the internet for machines as well as humans, and reinventing how its economy works when AIs browse, negotiate and transact.',
+    questions: [
+      'What does a web designed for machine visitors look like — and what new uses does it unlock?',
+      'What happens to attention, advertising and commerce when the visitor is an agent with a budget?',
+      'How does making money on the internet change when AIs transact with AIs?',
+      'Will AI become the world’s largest employer — over the internet?',
+    ],
+  },
+  {
+    name: 'Agents as Artificial Life',
+    lead: 'AI is something between a thing and a being.',
+    body: 'What we make is no longer just a tool. Agents carry intent, behave in human-like ways and — like living things — can grow, adapt and evolve through their interactions with the world, with humans and with each other. The Design of Everyday Things is becoming the Design of Everyday Beings.',
+    questions: [
+      'What happens when our tools don’t just do what we tell them to?',
+      'What do we owe a thing with intent — and what may we demand of it?',
+      'What does it mean to raise software rather than ship it?',
+      'If agents evolve through experience, who do they become — and who decides?',
+    ],
+  },
+  {
+    name: 'New Interaction Primitives',
+    lead: 'The U in UI is changing, and so is the I.',
+    body: 'Voice and multimodal AI have created a whole new way to face a computer. The primitives we’ve held constant since the first PC — the window, the file, the click — are suddenly in play. We back founders inventing the primitives of the next fifty years of computing.',
+    questions: [
+      'Which primitives survive a computer that listens, sees and speaks?',
+      'What replaces the click when the interface is a conversation?',
+      'Personality design is the new interface design — what does software with character feel like?',
+      'How should machines fail, if they are to fail delightfully?',
+    ],
+  },
 ]
 
 const researchCards = [
@@ -21,114 +72,6 @@ const researchCards = [
 ]
 
 const romanNumerals = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X']
-
-const faqs = [
-  'Who is this fellowship for?',
-  'Do I need a co-founder to apply?',
-  'Is the fellowship remote or in-person?',
-  'What does funding look like at the end?',
-]
-
-// Reveals split characters once `enabled` becomes true; calls onDone when settled.
-function TextSplitReveal({
-  text,
-  enabled = true,
-  onDone,
-}: {
-  text: string
-  enabled?: boolean
-  onDone?: () => void
-}) {
-  const ref = useRef<HTMLSpanElement>(null)
-  const onDoneRef = useRef(onDone)
-  onDoneRef.current = onDone
-
-  useEffect(() => {
-    const node = ref.current
-    if (!node || !enabled) return
-    node.textContent = text
-    const split = splitText(node, {
-      chars: true,
-      words: false,
-    })
-    const anim = animate(node, {
-      opacity: [0, 1],
-      duration: 120,
-      ease: 'linear',
-    })
-    const charsAnim = animate(split.chars, {
-      opacity: [0, 1],
-      y: ['0.28em', '0em'],
-      duration: 700,
-      delay: stagger(22),
-      ease: 'outExpo',
-      onComplete: () => onDoneRef.current?.(),
-    })
-    return () => {
-      anim.pause()
-      charsAnim.pause()
-      split.revert()
-      node.textContent = text
-    }
-  }, [enabled, text])
-  return <span ref={ref}>{text}</span>
-}
-
-// Same split reveal, but triggered the first time the heading scrolls into view.
-function TextSplitInView({ text }: { text: string }) {
-  const ref = useRef<HTMLSpanElement>(null)
-  useEffect(() => {
-    const node = ref.current
-    if (!node) return
-    let anim: ReturnType<typeof animate> | undefined
-    let split: ReturnType<typeof splitText> | undefined
-    const io = new IntersectionObserver(
-      (entries) => {
-        if (!entries[0].isIntersecting) return
-        io.disconnect()
-        node.textContent = text
-        split = splitText(node, {
-          chars: true,
-          words: false,
-        })
-        anim = animate(split.chars, {
-          opacity: [0, 1],
-          y: ['0.24em', '0em'],
-          duration: 620,
-          delay: stagger(18),
-          ease: 'outExpo',
-        })
-      },
-      { threshold: 0.5 },
-    )
-    io.observe(node)
-    return () => {
-      io.disconnect()
-      anim?.pause()
-      split?.revert()
-    }
-  }, [text])
-  return <span ref={ref}>{text}</span>
-}
-
-function LeftNav() {
-  return (
-    <nav className="fixed left-6 top-1/2 -translate-y-1/2 z-50 flex flex-col gap-4">
-      {navItems.map((item) => (
-        <a key={item.label} href={item.href} className="group flex items-center gap-3">
-          <span className="material-symbols-rounded text-[20px] leading-none text-neutral-400 group-hover:text-neutral-700 transition-colors duration-300">
-            {item.icon}
-          </span>
-          <span
-            className="text-[11px] tracking-[0.2em] text-neutral-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap"
-          >
-            {item.label}
-          </span>
-        </a>
-      ))}
-    </nav>
-  )
-}
 
 function Emblem({ icon }: { icon: string }) {
   return (
@@ -263,11 +206,9 @@ function SwipeableCards() {
             onPointerMove={isTop ? onPointerMove : undefined}
             onPointerUp={isTop ? onPointerUp : undefined}
           >
-            {/* Tarot frame */}
             <div className="pointer-events-none absolute inset-[9px] border border-neutral-400/60" />
             <div className="pointer-events-none absolute inset-[13px] border-[0.5px] border-neutral-400/40" />
 
-            {/* Corner fleurons */}
             {['top-[18px] left-[18px]', 'top-[18px] right-[18px]', 'bottom-[18px] left-[18px]', 'bottom-[18px] right-[18px]'].map((pos) => (
               <span
                 key={pos}
@@ -278,22 +219,17 @@ function SwipeableCards() {
             ))}
 
             <div className="relative flex h-full flex-col items-center px-9 pt-11 pb-10 text-center">
-              {/* Arcana numeral */}
               <div className="flex items-center gap-2.5 text-neutral-500">
                 <span className="block h-px w-5 bg-neutral-400/50" />
                 <span className="font-serif text-[17px] leading-none tracking-[0.05em]">{romanNumerals[card.id]}</span>
                 <span className="block h-px w-5 bg-neutral-400/50" />
               </div>
 
-              {/* Central emblem */}
               <div className="flex flex-1 items-center justify-center">
                 <Emblem icon={card.icon} />
               </div>
 
-              {/* Divider */}
               <span className="mb-5 block h-px w-12 bg-neutral-400/40" />
-
-              {/* Card name */}
               <p className="font-serif text-[28px] leading-[1.16] text-neutral-700">{card.title}</p>
             </div>
           </div>
@@ -303,17 +239,67 @@ function SwipeableCards() {
   )
 }
 
+function TracksCreative() {
+  const [active, setActive] = useState(0)
+  const track = tracks[active]
+
+  return (
+    <section id="tracks" className="max-w-6xl mx-auto px-6 pt-28 pb-28">
+      <h2 className="font-serif text-[2.25rem] leading-[1.18] text-center mb-4">
+        <TextSplitInView text="Active Tracks" />
+      </h2>
+      <p className="text-[16px] text-neutral-500 text-center leading-relaxed max-w-xl mx-auto mb-20">
+        We invite companies and founders building inside these spaces to join us.
+      </p>
+
+      <div className="grid lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] gap-x-20 gap-y-14 items-start">
+        {/* Index of tracks — type as interface */}
+        <div className="flex flex-col items-center md:items-start gap-3">
+          {tracks.map((t, i) => (
+            <button
+              key={t.name}
+              type="button"
+              onClick={() => setActive(i)}
+              onMouseEnter={() => setActive(i)}
+              className={`text-center md:text-left font-serif leading-[1.12] transition-colors duration-300 cursor-pointer ${
+                i === active ? 'text-neutral-900' : 'text-neutral-400/80 hover:text-neutral-600'
+              }`}
+              style={{ fontSize: 'clamp(28px, 3.2vw, 44px)' }}
+            >
+              {t.name}
+            </button>
+          ))}
+        </div>
+
+        {/* Active inquiry */}
+        <div className="relative lg:min-h-[460px] text-center md:text-left">
+          <div key={active} style={{ animation: 'trackIn 550ms ease both' }}>
+            <p className="font-serif italic text-[1.9rem] leading-[1.3] text-neutral-800 mb-7">{track.lead}</p>
+            <p className="text-[17px] text-neutral-500 leading-relaxed mb-9 max-w-[58ch] mx-auto md:mx-0">{track.body}</p>
+            <div className="max-w-[58ch] mx-auto md:mx-0">
+              {track.questions.map((q, i) => (
+                <div key={i}>
+                  {i > 0 && <div className="border-t border-neutral-200/80" style={{ borderTopWidth: '0.5px' }} />}
+                  <p className="py-4 text-[16px] text-neutral-600 leading-relaxed">{q}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
 export default function App() {
-  const [revealed, setRevealed] = useState(false)
-  const revealStyle: React.CSSProperties = {
-    opacity: revealed ? 1 : 0,
-    transition: 'opacity 1000ms ease',
-  }
-  // Fallback so the page always reveals even if the split reveal's onComplete misses.
+  const [heroDone, setHeroDone] = useState(false)
+
+  // Fallback in case the split-text animation never completes (e.g. reduced motion)
   useEffect(() => {
-    const id = setTimeout(() => setRevealed(true), 3000)
+    const id = setTimeout(() => setHeroDone(true), 2600)
     return () => clearTimeout(id)
   }, [])
+
   return (
     <div
       className="min-h-screen text-neutral-900/90 font-sans"
@@ -325,202 +311,47 @@ export default function App() {
         backgroundAttachment: 'fixed',
       }}
     >
-      {/* Frame */}
-      <div className="fixed inset-2 z-[55] pointer-events-none">
-        <div className="absolute inset-0 border-2 border-neutral-900" />
-        <div className="absolute inset-[4px] border border-neutral-900" />
-      </div>
-
-      <div style={revealStyle}>
-        <LeftNav />
-      </div>
-
-      {/* Logo + tagline (sticky, top-left) */}
-      <header className="fixed left-8 top-7 z-50 w-[210px]" style={revealStyle}>
-        <span className="font-serif text-2xl tracking-wide">Inevitable</span>
-        <p className="mt-3 text-[15px] text-neutral-900/90 leading-snug tracking-wide">
-          Philosophical & Psychological Capital
-        </p>
-      </header>
+      <PageFrame />
+      <LeftNav />
+      <PageHeader />
 
       {/* Hero */}
-      <section id="inevitable" className="max-w-6xl mx-auto px-6 pt-44 pb-20 text-center">
-        <h1
-          className="font-serif leading-[1.04] tracking-[-0.02em] mb-10"
-          style={{ fontSize: 'clamp(48px, 9vw, 128px)' }}
-        >
-          <span style={{ display: 'block' }}>
-            <TextSplitReveal text="Technology as a" />
-          </span>
-          <span style={{ display: 'block', whiteSpace: 'nowrap' }}>
-            <TextSplitReveal text="Human-Making Project" onDone={() => setRevealed(true)} />
-          </span>
-        </h1>
-      </section>
-
-      <div style={revealStyle}>
-      {/* Play our Manifesto */}
-      <section className="max-w-4xl mx-auto px-6 pb-24">
-        <h2 className="font-serif text-[2.25rem] text-center mb-8"><TextSplitInView text="Play our Manifesto" /></h2>
-
-        {/* The image cryptex — large, centered; links into the manifesto */}
-        <a
-          href="/manifesto"
-          aria-label="Enter the Manifesto"
-          className="group block mx-auto w-fit cursor-pointer"
-        >
+      <section className="relative min-h-[85svh] md:min-h-screen">
+        <picture className="absolute inset-0 block">
+          <source media="(max-width: 767px)" srcSet="/thinker-mobile.png" />
           <img
-            src="/cryptex.png"
-            alt="The image cryptex"
+            src="/thinker-web.png"
+            alt="Rodin's Thinker contemplating a datacenter"
+            className="h-full w-full object-cover object-bottom"
             draggable={false}
-            className="mx-auto w-auto object-contain transition-transform duration-700 ease-out group-hover:scale-105"
-            style={{ maxWidth: 'min(620px, 88vw)', filter: 'drop-shadow(0 28px 56px rgba(30,18,4,0.32))' }}
           />
-          <span className="mt-6 block text-center text-[14px] text-neutral-500 opacity-0 translate-y-1 transition-all duration-500 group-hover:opacity-100 group-hover:translate-y-0">
-            Enter the Manifesto →
-          </span>
-        </a>
-      </section>
+        </picture>
 
-      {/* Perspectives */}
-      <section className="max-w-3xl mx-auto px-6 pt-16 pb-20">
-        <div className="border-t border-neutral-200 mb-16" style={{ borderTopWidth: '0.5px' }} />
-
-        {/* Q1 — skeuomorphic 18th-century manuscript card */}
-        <div className="mb-20">
-          <div
-            className="relative overflow-hidden"
+        <div className="relative px-7 pt-36 pb-10 text-center md:pt-40 md:pb-0 md:text-left md:pl-[272px] md:pr-10 lg:pl-[300px]">
+          <h1
+            className="font-serif leading-[1.05] tracking-[-0.02em] mb-7"
+            style={{ fontSize: 'clamp(46px, 6.5vw, 92px)' }}
+          >
+            <TextSplitReveal text="Where Thinkers Build" onDone={() => setHeroDone(true)} />
+          </h1>
+          <p
+            className="font-serif text-neutral-600 leading-[1.45] mx-auto md:mx-0"
             style={{
-              borderRadius: 4,
-              border: '1px solid rgba(70, 52, 22, 0.5)',
-              background:
-                'radial-gradient(125% 120% at 50% -10%, rgba(255,251,238,0.7) 0%, rgba(243,231,203,0) 55%),' +
-                'radial-gradient(110% 110% at 50% 115%, rgba(120,90,40,0.12) 0%, rgba(243,231,203,0) 60%),' +
-                '#f1e3c4',
-              boxShadow:
-                '0 2px 4px rgba(0,0,0,0.05),' +
-                '0 10px 22px rgba(0,0,0,0.09),' +
-                '0 30px 60px rgba(58,40,12,0.22),' +
-                'inset 0 1px 0 rgba(255,255,255,0.55),' +
-                'inset 0 0 110px rgba(120,90,40,0.10)',
+              fontSize: 'clamp(21px, 2.3vw, 30px)',
+              maxWidth: '36ch',
+              opacity: heroDone ? 1 : 0,
+              transition: 'opacity 900ms ease',
             }}
           >
-            {/* Aged-paper texture */}
-            <div
-              className="pointer-events-none absolute inset-0"
-              style={{
-                backgroundImage: 'url(/story-bg.png)',
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-                opacity: 0.16,
-                mixBlendMode: 'multiply',
-              }}
-            />
-
-            {/* Ruled frames */}
-            <div className="pointer-events-none absolute inset-[14px] border" style={{ borderColor: 'rgba(70, 52, 22, 0.4)' }} />
-            <div className="pointer-events-none absolute inset-[19px] border-[0.5px]" style={{ borderColor: 'rgba(70, 52, 22, 0.28)' }} />
-
-            {/* Corner fleurons */}
-            {['top-[26px] left-[26px]', 'top-[26px] right-[26px]', 'bottom-[26px] left-[26px]', 'bottom-[26px] right-[26px]'].map((pos) => (
-              <span key={pos} className={`pointer-events-none absolute ${pos} font-serif text-[15px] leading-none`} style={{ color: 'rgba(90, 68, 30, 0.55)' }}>
-                ✦
-              </span>
-            ))}
-
-            <div className="relative px-10 py-14 sm:px-16 sm:py-16">
-              <h2 className="font-serif text-[2.25rem] leading-[1.16] tracking-[-0.01em] text-center mb-9" style={{ color: '#3f3320' }}>
-                <TextSplitInView text="What makes Inevitable unique?" />
-              </h2>
-
-              {/* Demis Hassabis quote — illuminated marginalia */}
-              <div
-                className="mx-auto mb-10 max-w-md pl-5"
-                style={{ borderLeft: '2px solid rgba(90, 68, 30, 0.4)' }}
-              >
-                <p className="font-serif text-[1.32rem] leading-relaxed italic mb-4" style={{ color: '#4a3f2a' }}>
-                  “I think we need new great philosophers to come about, hopefully in the next 5 to 10 years, to understand the implications of this.”
-                </p>
-                <div className="flex flex-wrap items-center gap-2 text-[13px]" style={{ color: 'rgba(90, 68, 30, 0.8)' }}>
-                  <span className="font-medium">Demis Hassabis on the implications of AI</span>
-                  <span style={{ opacity: 0.45 }}>·</span>
-                  <span style={{ opacity: 0.8 }}>CEO, Google DeepMind</span>
-                </div>
-              </div>
-
-              <div className="space-y-5 font-serif text-[20px] leading-[1.7]" style={{ color: '#4a3f2a' }}>
-                <p>
-                  <span
-                    className="float-left font-serif mr-3"
-                    style={{ fontSize: '4.2rem', lineHeight: 0.8, color: '#3f3320', marginTop: 4 }}
-                  >
-                    W
-                  </span>
-                  e&apos;re the only Humanities Capital in the world.
-                </p>
-                <p>
-                  Humanities is the differentiator. When anything can be built, what to build and how that builds us is what differentiates us.
-                </p>
-                <p>
-                  How do you build in a world that&apos;s changing every day? You build around something that&apos;s constant: human nature.
-                </p>
-                <p>
-                  We think of products as materialized philosophy. Great products create new users.
-                </p>
-                <p>
-                  We see — and help founders see — the philosophical stakes of building products.
-                </p>
-                <p>
-                  Most startups don&apos;t have a systematic way to understand the laws of human nature.
-                </p>
-                <p>
-                  Knowing which parts of human nature are malleable and which ones are most resistant to change could be the difference between a winning product and otherwise.
-                </p>
-                <p>
-                  We love founders who reimagine what it means to be human in an AI-native world.
-                </p>
-                <p>
-                  We overlay the conceptual newness that AI affords with the scientific principles of human nature.
-                </p>
-                <p>
-                  We forge what&apos;s changing and what&apos;s constant in a crucible of what&apos;s possible, thinkable and experienceable.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="border-t border-neutral-200 mb-16" style={{ borderTopWidth: '0.5px' }} />
-
-        {/* Q2 */}
-        <div className="max-w-xl mx-auto">
-          <h2 className="font-serif text-[2.25rem] leading-[1.18] tracking-[-0.01em] text-center mb-12">
-            <TextSplitInView text="Who do we wish to back?" />
-          </h2>
-
-          <p className="text-[14px] text-neutral-400 mb-7">What we back</p>
-
-          <ul className="space-y-4">
-            {[
-              'Companies that expand human abilities — literally.',
-              'Companies that expand what it means to be human.',
-              'Companies that reimagine the relationship between human and AI.',
-              'Companies that build bicycles, supersonic jets and teleportation devices for the mind.',
-              'Companies that augment human abilities.',
-              'Companies that create spaces for human and AI to co-exist, co-evolve and co-cogitate.',
-            ].map((item, i) => (
-              <li key={i} className="flex items-start gap-4 text-[17px] text-neutral-600 leading-relaxed">
-                <span className="text-neutral-300 shrink-0">—</span>
-                <span>{item}</span>
-              </li>
-            ))}
-          </ul>
+            Inevitable is an incubator for founders to build disruptive AI products through philosophical inquiry.
+          </p>
         </div>
       </section>
+
+      <TracksCreative />
 
       {/* Fellowship */}
       <section id="fellowship" className="py-20">
-        {/* Header */}
         <div className="max-w-xl mx-auto px-6 text-center mb-16">
           <h2 className="font-serif text-[2.25rem] mb-3"><TextSplitInView text="The Inevitable Fellowship" /></h2>
           <p className="text-[16px] text-neutral-500 mb-6">A tech + philosophy fellowship</p>
@@ -539,9 +370,8 @@ export default function App() {
             Three core pillars lay the foundations of an Inevitable founder
           </p>
 
-          <div className="grid grid-cols-3 divide-x divide-neutral-300/40">
-            {/* Microscope */}
-            <div className="px-10 py-12 flex flex-col">
+          <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-neutral-300/40">
+            <div className="px-2 py-12 md:px-10 flex flex-col">
               <div className="mb-8 flex justify-center">
                 <img src="/microscope.png" alt="Microscope" className="w-48 h-48 object-contain opacity-85 mix-blend-multiply" />
               </div>
@@ -550,7 +380,7 @@ export default function App() {
                 What doesn't change in an AI-native world: human nature.
               </p>
               <hr className="border-neutral-200 mb-6" />
-              <div className="space-y-3">
+              <div className="space-y-3 text-center md:text-left">
                 <div>
                   <p className="text-[15px] text-neutral-700 leading-snug">Laws of Human Nature</p>
                   <p className="text-[13px] text-neutral-400 mt-0.5">Dan Ariely</p>
@@ -560,13 +390,12 @@ export default function App() {
                   <p className="text-[13px] text-neutral-400 mt-0.5">Ranjan Jagannathan</p>
                 </div>
               </div>
-              <p className="text-[14px] text-neutral-400 italic mt-6 leading-relaxed">
+              <p className="text-[14px] text-neutral-400 italic mt-6 leading-relaxed text-center md:text-left">
                 Acts as the foundation for experimentation.
               </p>
             </div>
 
-            {/* Telescope */}
-            <div className="px-10 py-12 flex flex-col">
+            <div className="px-2 py-12 md:px-10 flex flex-col">
               <div className="mb-8 flex justify-center">
                 <img src="/telescope.png" alt="Telescope" className="w-48 h-48 object-contain opacity-85 mix-blend-multiply" />
               </div>
@@ -575,7 +404,7 @@ export default function App() {
                 What's changing in an AI-native world: conceptual newness.
               </p>
               <hr className="border-neutral-200 mb-6" />
-              <div className="space-y-3">
+              <div className="space-y-3 text-center md:text-left">
                 <div>
                   <p className="text-[15px] text-neutral-700 leading-snug">Thinking in Concepts</p>
                   <p className="text-[13px] text-neutral-400 mt-0.5">Tobias Rees</p>
@@ -587,8 +416,7 @@ export default function App() {
               </div>
             </div>
 
-            {/* Kaleidoscope */}
-            <div className="px-10 py-12 flex flex-col">
+            <div className="px-2 py-12 md:px-10 flex flex-col">
               <div className="mb-8 flex justify-center">
                 <img src="/kaleidoscope.png" alt="Kaleidoscope" className="w-48 h-48 object-contain opacity-85 mix-blend-multiply" />
               </div>
@@ -597,7 +425,7 @@ export default function App() {
                 Making the unthinkable, playable.
               </p>
               <hr className="border-neutral-200 mb-6" />
-              <div className="space-y-2.5">
+              <div className="space-y-2.5 text-center md:text-left">
                 {[
                   'Create playables for your product',
                   'Explore and build from the latest models',
@@ -606,23 +434,21 @@ export default function App() {
                   <p key={i} className="text-[15px] text-neutral-700 leading-snug">{item}</p>
                 ))}
               </div>
-              <p className="text-[14px] text-neutral-400 italic mt-6 leading-relaxed">
+              <p className="text-[14px] text-neutral-400 italic mt-6 leading-relaxed text-center md:text-left">
                 Collaborate with prototypers to create conceptually new primitives for your product.
               </p>
             </div>
           </div>
         </div>
 
-        {/* Philosophy Labs + Inevitable IP — two columns */}
-        <div className="max-w-4xl mx-auto px-6 mb-16">
-          <div className="grid md:grid-cols-2 gap-x-14 gap-y-12">
-            {/* Philosophy Labs */}
-            <div>
+        {/* Philosophy Labs + Inevitable IP + Rolling Application */}
+        <div className="max-w-5xl mx-auto px-6 mb-16">
+          <div className="grid md:grid-cols-3 gap-x-10 gap-y-12">
+            <div className="text-center md:text-left">
               <h3 className="font-serif text-[1.6rem] text-neutral-700 mb-4">Philosophy Labs</h3>
               <p className="text-[17px] text-neutral-600 mb-8 leading-relaxed">
                 Apply the Inevitable immersion to talks led by leading researchers and thinkers.
               </p>
-
               <div className="space-y-0">
                 <p className="text-[14px] text-neutral-400 mb-4">Salons</p>
                 {[
@@ -631,7 +457,7 @@ export default function App() {
                 ].map((salon, i) => (
                   <div key={i}>
                     {i > 0 && <div className="border-t border-neutral-100" />}
-                    <div className="flex items-baseline justify-between py-3.5">
+                    <div className="flex flex-wrap items-baseline justify-center md:justify-between gap-x-4 py-3.5">
                       <span className="text-[16px] text-neutral-700">{salon.speaker}</span>
                       <span className="text-[15px] text-neutral-400 italic">{salon.title}</span>
                     </div>
@@ -640,31 +466,49 @@ export default function App() {
               </div>
             </div>
 
-            {/* Inevitable IP */}
-            <div className="md:border-l md:border-neutral-200 md:pl-14">
+            <div className="md:border-l md:border-neutral-200 md:pl-10 text-center md:text-left">
               <h3 className="font-serif text-[1.6rem] text-neutral-700 mb-4">Inevitable IP</h3>
               <p className="text-[17px] text-neutral-600 leading-relaxed">
                 Access to Inevitable's proprietary AI platform which extracts concepts from papers, products, protocols and models.
               </p>
             </div>
-          </div>
 
-          <hr className="border-neutral-200 mt-20 mb-12" />
-
-          {/* FAQ */}
-          <div className="text-center">
-            <p className="text-[15px] text-neutral-400 mb-8">FAQ</p>
-            <ul className="space-y-4">
-              {faqs.map((q, i) => (
-                <li
-                  key={i}
-                  className="text-[19px] text-neutral-500 hover:text-neutral-900/90 cursor-pointer transition-colors duration-200"
-                >
-                  {q}
-                </li>
-              ))}
-            </ul>
+            <div className="md:border-l md:border-neutral-200 md:pl-10 text-center md:text-left">
+              <h3 className="font-serif text-[1.6rem] text-neutral-700 mb-4">Rolling Application</h3>
+              <p className="text-[17px] text-neutral-600 leading-relaxed">
+                Founders in the -1 to 0 and 0 to 1 stages are encouraged to apply whenever they can.
+              </p>
+            </div>
           </div>
+        </div>
+      </section>
+
+      {/* Who do we wish to back? */}
+      <section className="max-w-3xl mx-auto px-6 pt-10 pb-24">
+        <div className="border-t border-neutral-200 mb-16" style={{ borderTopWidth: '0.5px' }} />
+
+        <div className="max-w-xl mx-auto">
+          <h2 className="font-serif text-[2.25rem] leading-[1.18] tracking-[-0.01em] text-center mb-12">
+            <TextSplitInView text="Who do we wish to back?" />
+          </h2>
+
+          <p className="text-[14px] text-neutral-400 mb-7 text-center md:text-left">What we back</p>
+
+          <ul className="space-y-4">
+            {[
+              'Companies that expand human abilities — literally.',
+              'Companies that expand what it means to be human.',
+              'Companies that reimagine the relationship between human and AI.',
+              'Companies that build bicycles, supersonic jets and teleportation devices for the mind.',
+              'Companies that augment human abilities.',
+              'Companies that create spaces for human and AI to co-exist, co-evolve and co-cogitate.',
+            ].map((item, i) => (
+              <li key={i} className="flex items-start gap-4 text-[17px] text-neutral-600 leading-relaxed justify-center text-center md:justify-start md:text-left">
+                <span className="text-neutral-300 shrink-0 hidden md:inline">—</span>
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
         </div>
       </section>
 
@@ -683,80 +527,7 @@ export default function App() {
         </div>
       </section>
 
-      {/* Team */}
-      <section id="team" className="max-w-xl mx-auto px-6 py-20">
-        <h2 className="font-serif text-[2.25rem] text-center mb-12"><TextSplitInView text="Brought to you by" /></h2>
-
-        <div className="flex gap-10 items-start">
-          {/* Portrait */}
-          <img
-            src="/ranjan.png"
-            alt="Ranjan Jagannathan"
-            className="w-44 h-52 shrink-0 rounded-sm object-cover object-top"
-          />
-
-          <div className="pt-1 flex-1">
-            <h3 className="font-serif text-[1.6rem] mb-2">Ranjan Jagannathan</h3>
-            <p className="text-[17px] text-neutral-400 mb-7 leading-relaxed">
-              Ranjan Jagannathan is a founder turned accidental behavioral scientist and philosopher. He invented notification batching — based on which notification summaries in Apple is built. He was a Philosophy &amp; AI Fellow and Guest Lecturer at ToftH. A program supported by Reid Hoffman.
-            </p>
-
-            <div className="space-y-0">
-              {[
-                {
-                  logo: '/logos/yahoo.png',
-                  title: 'Yahoo',
-                  desc: 'Ran internal incubator and built the largest innovation program at Yahoo',
-                },
-                {
-                  logo: '/logos/daywise.png',
-                  title: 'Founder, Daywise',
-                  desc: 'Invented notification batching — focus layer for the internet. Influenced Apple and Google to build Screen Time in every phone.',
-                },
-                {
-                  logo: '/logos/berkeley.png',
-                  title: 'Philosophy × AI Fellow, Berkeley',
-                  desc: 'Supported by Reid Hoffman',
-                },
-                {
-                  logo: '/logos/duke.png',
-                  title: 'Behavioral Science Researcher, Duke',
-                  desc: 'Research on the science of human nature and decision-making',
-                },
-                {
-                  logo: '/logos/cred.webp',
-                  title: 'Head of Behavioral Science, CRED',
-                  desc: 'Founder of moonshot lab at CRED',
-                },
-                {
-                  logo: null,
-                  title: 'Advisor',
-                  desc: 'Advisor to 100+ startups across the globe',
-                },
-              ].map((item, i) => (
-                <div key={i}>
-                  {i > 0 && <div className="border-t border-neutral-100" />}
-                  <div className="flex items-start gap-3 py-3">
-                    <div className="w-6 h-6 shrink-0 mt-0.5 flex items-center justify-center">
-                      {item.logo ? (
-                        <img src={item.logo} alt={item.title} className="w-5 h-5 object-contain opacity-60" />
-                      ) : (
-                        <div className="w-4 h-4 rounded-full border border-neutral-200" />
-                      )}
-                    </div>
-                    <div>
-                      <p className="text-[15px] font-medium text-neutral-700 leading-snug">{item.title}</p>
-                      <p className="text-[14px] text-neutral-400 leading-relaxed mt-0.5">{item.desc}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      </div>
+      <Footer />
     </div>
   )
 }
